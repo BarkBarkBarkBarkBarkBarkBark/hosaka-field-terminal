@@ -382,7 +382,7 @@ export class HosakaShell {
         break;
       case "proxy_down":
         this.writeln(`  ${GRAY}the orb is quiet. the relay is resting.${R}`);
-        this.writeln(`  ${GRAY}say ${VIOLET}neuro${R}${GRAY} and try again — picoclaw still listens.${R}`);
+        this.writeln(`  ${GRAY}whisper ${VIOLET}the word${R}${GRAY} and try again — picoclaw still listens.${R}`);
         break;
       case "empty":
         this.writeln(`  ${GRAY}the orb heard you but had nothing to say. try again.${R}`);
@@ -397,7 +397,7 @@ export class HosakaShell {
     this.writeln("");
     this.writeln(`  ${GRAY}the channel is quiet. behind it: ${AMBER}picoclaw${R}${GRAY} — an agent${R}`);
     this.writeln(`  ${GRAY}that walks a sandboxed workspace and answers in full thoughts.${R}`);
-    this.writeln(`  ${GRAY}say ${VIOLET}neuro${R}${GRAY} to open the door.${R}`);
+    this.writeln(`  ${GRAY}speak ${VIOLET}the magic word${R}${GRAY} to open the door.${R}`);
     this.writeln("");
   }
 
@@ -534,10 +534,10 @@ export class HosakaShell {
     this.writeln("");
     switch (code) {
       case "not_configured":
-        this.writeln(`  ${GRAY}the channel isn't tuned yet. say ${VIOLET}neuro${R}${GRAY} to open it.${R}`);
+        this.writeln(`  ${GRAY}the channel isn't tuned yet. ${VIOLET}whisper a word${R}${GRAY} to open it.${R}`);
         break;
       case "unauthorized":
-        this.writeln(`  ${GRAY}the door didn't recognize the word. say ${VIOLET}neuro${R}${GRAY} to try again.${R}`);
+        this.writeln(`  ${GRAY}the door didn't recognize the word. ${VIOLET}try another${R}${GRAY}.${R}`);
         break;
       case "unreachable":
         this.writeln(`  ${GRAY}the relay is sleeping. give it a moment and try again.${R}`);
@@ -623,7 +623,7 @@ export class HosakaShell {
     }
     if (sub === "test") {
       if (!cfg.url || !cfg.passphrase) {
-        this.writeln(`  ${GRAY}the channel isn't tuned. say ${VIOLET}neuro${R}${GRAY} first.${R}`);
+        this.writeln(`  ${GRAY}the channel isn't tuned. ${VIOLET}speak the word${R}${GRAY} first.${R}`);
         return;
       }
       this.writeln(`  ${DARK_GRAY}pinging agent…${R}`);

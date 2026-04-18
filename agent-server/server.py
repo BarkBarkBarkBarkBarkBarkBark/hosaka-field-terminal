@@ -199,12 +199,11 @@ async def _run_picoclaw(
         "--session",
         f"hosaka:{session.sid}",
     ]
-    # If PICOCLAW_MODEL is set, pass the *friendly* short name (model_name),
-    # not the litellm-style provider/model (which is what `model` expects).
-    # picoclaw's --model flag looks up by model_name in model_list.
-    if PICOCLAW_MODEL:
-        friendly = PICOCLAW_MODEL.split("/", 1)[-1]
-        cmd += ["--model", friendly]
+    # Intentionally NOT passing --model. picoclaw's --model lookup is fussy
+    # (rejects both model_name and litellm-style model strings in some
+    # combinations). The config's agents.defaults.model_name already pins
+    # which model picoclaw uses; to swap, change PICOCLAW_MODEL on Fly and
+    # start.sh rewrites the config.
 
     log.info("sid=%s running picoclaw", session.sid)
     proc = await asyncio.create_subprocess_exec(

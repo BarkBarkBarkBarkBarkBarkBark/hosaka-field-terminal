@@ -395,7 +395,9 @@ export class HosakaShell {
 
   private channelClosed(): void {
     this.writeln("");
-    this.writeln(`  ${GRAY}the channel is quiet. say ${VIOLET}neuro${R}${GRAY} to open it again.${R}`);
+    this.writeln(`  ${GRAY}the channel is quiet. behind it: ${AMBER}picoclaw${R}${GRAY} — an agent${R}`);
+    this.writeln(`  ${GRAY}that walks a sandboxed workspace and answers in full thoughts.${R}`);
+    this.writeln(`  ${GRAY}say ${VIOLET}neuro${R}${GRAY} to open the door.${R}`);
     this.writeln("");
   }
 
@@ -442,9 +444,15 @@ export class HosakaShell {
     this.writeln(`  ${AMBER}connecting${R}${DARK_GRAY}…${R}  ${GREEN}agent channel open${R}`);
     this.writeln(`  ${DARK_GRAY}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░${R}`);
     this.writeln("");
-    this.writeln(`  ${GRAY}you are now speaking with picoclaw. it has a real filesystem${R}`);
-    this.writeln(`  ${GRAY}and a real shell (sandboxed). it answers ${VIOLET}slowly${R}${GRAY} — wait for it.${R}`);
+    this.writeln(`  ${GRAY}you are now speaking with ${AMBER}picoclaw${R}${GRAY} — an agentic framework${R}`);
+    this.writeln(`  ${GRAY}with a sandboxed workspace it can ${VIOLET}walk, read, write, and probe${R}${GRAY}.${R}`);
     this.writeln("");
+    this.writeln(`  ${DARK_GRAY}things to try:${R}`);
+    this.writeln(`    ${CYAN}list the files in your workspace${R}`);
+    this.writeln(`    ${CYAN}make a tiny haiku in haiku.txt${R}`);
+    this.writeln(`    ${CYAN}what tools do you have?${R}`);
+    this.writeln("");
+    this.writeln(`  ${DARK_GRAY}it answers ${VIOLET}slowly${R}${DARK_GRAY} — agents think before they speak.${R}`);
     this.writeln(`  ${DARK_GRAY}to close the channel, type${R} ${CYAN}/agent off${R}${DARK_GRAY}.${R}`);
     this.writeln("");
   }

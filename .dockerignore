@@ -11,6 +11,7 @@
 !agent-server/requirements.txt
 !agent-server/server.py
 !agent-server/start.sh
+!agent-server/seed/
 
 # Anti-patterns that might sneak through if someone edits this file later:
 __pycache__/

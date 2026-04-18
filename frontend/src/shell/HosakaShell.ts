@@ -1,7 +1,6 @@
 import type { Terminal } from "@xterm/xterm";
 import {
   BANNER,
-  BANNER_COMPACT,
   PLANT_STATES,
   LORE_FRAGMENTS,
   ORBS,
@@ -85,32 +84,32 @@ export class HosakaShell {
   }
 
   private writeBanner(): void {
-    // On narrow viewports the wide block banner wraps mid-glyph and looks
-    // broken. Pick the compact variant when xterm reports < 56 cols.
+    // Narrow viewports get a deliberately tiny opening so the prompt
+    // lands in the upper-mid of the screen instead of being pushed off
+    // the fold by ASCII art. The plant + full chrome are still one
+    // /plant or /help away.
     const cols = this.term.cols ?? 80;
-    const banner = cols < 56 ? BANNER_COMPACT : BANNER;
-    for (const line of banner) this.writeln(`${CYAN}${line}${R}`);
+    if (cols < 56) {
+      this.writeln(`  ${CYAN}▓▒ HOSAKA ▒▓${R}  ${GRAY}signal steady${R}`);
+      this.writeln(
+        `  ${DARK_GRAY}/help  ·  ${VIOLET}whisper a word${R}${DARK_GRAY} to open the channel${R}`,
+      );
+      this.writeln("");
+      return;
+    }
+    for (const line of BANNER) this.writeln(`${CYAN}${line}${R}`);
     this.writeln("");
     this.writeln(this.renderPlant());
     this.writeln("");
-    if (cols < 56) {
-      this.writeln(`  ${CYAN}Field Terminal Online.${R}`);
-      this.writeln(`  ${GRAY}Signal steady. ${AMBER_DIM}hosted edition${R}`);
-      this.writeln(`  ${DARK_GRAY}/help · /commands${R}`);
-      this.writeln(
-        `  ${DARK_GRAY}say a ${VIOLET}word${R}${DARK_GRAY}, open the channel.${R}`,
-      );
-    } else {
-      this.writeln(
-        `  ${CYAN}Field Terminal Online.${R}  ${GRAY}Signal steady.${R}  ${AMBER_DIM}hosted edition${R}`,
-      );
-      this.writeln(
-        `  ${DARK_GRAY}/commands to explore  ·  /help to start  ·  /ask the orb anything${R}`,
-      );
-      this.writeln(
-        `  ${DARK_GRAY}if someone shared a word with you, ${VIOLET}say it${R}${DARK_GRAY} and the channel opens.${R}`,
-      );
-    }
+    this.writeln(
+      `  ${CYAN}Field Terminal Online.${R}  ${GRAY}Signal steady.${R}  ${AMBER_DIM}hosted edition${R}`,
+    );
+    this.writeln(
+      `  ${DARK_GRAY}/commands to explore  ·  /help to start  ·  /ask the orb anything${R}`,
+    );
+    this.writeln(
+      `  ${DARK_GRAY}if someone shared a word with you, ${VIOLET}say it${R}${DARK_GRAY} and the channel opens.${R}`,
+    );
     this.writeln("");
   }
 

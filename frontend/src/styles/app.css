@@ -737,4 +737,28 @@ html, body, #root {
     margin-right: 0;
   }
   .hosaka-dock-label { font-size: 12px; }
+
+  /* Pull the terminal toward the upper-mid of the screen by trimming
+     the chrome above and below it. The footer is purely vibes copy,
+     so it goes. The plant pill is redundant with /plant in-shell. */
+  .hosaka-topbar { padding: 4px 10px; }
+  .hosaka-brand-logo { font-size: 13px; }
+  .signal-badge, .plant-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+  .plant-badge { display: none; }
+  .icon-btn { width: 32px; height: 32px; }
+
+  .hosaka-dock { padding: 3px 6px; gap: 4px; }
+  .hosaka-dock-btn {
+    padding: 5px 10px;
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .terminal-wrap { padding: 4px; }
+  .terminal-host { padding: 6px; }
+
+  .hosaka-footer { display: none; }
 }

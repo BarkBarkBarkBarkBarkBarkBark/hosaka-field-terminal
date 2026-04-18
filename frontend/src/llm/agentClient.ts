@@ -59,7 +59,8 @@ export type AgentHello = {
 export type AgentEvent =
   | AgentHello
   | { type: "thinking" }
-  | { type: "reply"; stdout: string; stderr: string }
+  | { type: "ping" }
+  | { type: "reply"; text?: string; stdout: string; stderr: string }
   | { type: "error"; error: string };
 
 export type AgentResult =
@@ -149,6 +150,7 @@ export class AgentClient {
           if (this.inflight) {
             window.clearTimeout(this.inflight.timer);
             const txt =
+              (data.text && data.text.trim()) ||
               data.stdout.trim() ||
               data.stderr.trim() ||
               "[agent returned nothing]";
@@ -173,7 +175,7 @@ export class AgentClient {
           return;
         }
 
-        // thinking → no-op, UI has already shown the spinner
+        // ping / thinking → no-op (server is just keeping the channel warm)
       });
 
       ws.addEventListener("close", () => {
@@ -212,9 +214,9 @@ export class AgentClient {
       const timer = window.setTimeout(() => {
         if (this.inflight) {
           this.inflight = null;
-          resolve({ ok: false, error: "timeout waiting for reply (60s)" });
+          resolve({ ok: false, error: "timeout waiting for reply (120s)" });
         }
-      }, 60_000);
+      }, 120_000);
 
       this.inflight = { resolve, timer };
       ws.send(JSON.stringify({ message }));

@@ -23,9 +23,10 @@ import hmac
 import json
 import logging
 import os
+import re
 import shutil
 import signal
-import subprocess
+import subprocess  # noqa: F401  (kept for future sync paths)
 import sys
 import time
 import uuid
@@ -47,12 +48,72 @@ ALLOWED_ORIGINS = [
 
 WORKSPACE_ROOT = Path(os.environ.get("HOSAKA_WORKSPACE_ROOT", "/workspaces"))
 SESSION_TTL_SECONDS = int(os.environ.get("HOSAKA_SESSION_TTL", "300"))
-MSG_TIMEOUT_SECONDS = int(os.environ.get("HOSAKA_MSG_TIMEOUT", "45"))
+MSG_TIMEOUT_SECONDS = int(os.environ.get("HOSAKA_MSG_TIMEOUT", "90"))
+PING_INTERVAL_SECONDS = int(os.environ.get("HOSAKA_PING_INTERVAL", "15"))
 MSG_MAX_CHARS = int(os.environ.get("HOSAKA_MSG_MAX_CHARS", "4000"))
 RATE_LIMIT_PER_MIN = int(os.environ.get("HOSAKA_RATE_PER_MIN", "30"))
 
 PICOCLAW_BIN = os.environ.get("PICOCLAW_BIN", "picoclaw")
 PICOCLAW_MODEL = os.environ.get("PICOCLAW_MODEL", "").strip()
+
+# Picoclaw response prefix — the original Hosaka adapter looks for this to
+# pull the agent's actual reply out of the decorated banner output.
+_RESPONSE_PREFIX = "🦞"
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
+_BANNER_HINTS = (
+    "█",
+    "picoclaw",
+    "interactive mode",
+    "goodbye",
+    "ctrl+c",
+    "config migrate",
+    "saving config",
+)
+
+
+def _strip_ansi(s: str) -> str:
+    return _ANSI_RE.sub("", s)
+
+
+def _is_chrome_line(clean: str) -> bool:
+    cl = clean.lower()
+    return (
+        not cl
+        or any(h in cl for h in _BANNER_HINTS)
+        # picoclaw log lines look like:  HH:MM:SS INF source/path > message
+        or re.match(r"^\d{2}:\d{2}:\d{2}\s+(INF|WRN|ERR|DBG)\s", clean) is not None
+    )
+
+
+def _extract_response(stdout: str, stderr: str) -> str:
+    """Pull picoclaw's agent reply out of its decorated output.
+
+    Strategy (mirrors hosaka/llm/picoclaw_adapter.py):
+      1. Look for the first line starting with the lobster prefix, then
+         collect every following non-banner line.
+      2. If no lobster line exists, fall back to all non-banner non-log lines.
+      3. If still empty, return the stderr (so users see *something*).
+    """
+    raw = stdout if stdout else stderr
+    lines = raw.splitlines()
+    cleaned = [_strip_ansi(ln).rstrip() for ln in lines]
+
+    for idx, line in enumerate(cleaned):
+        if line.lstrip().startswith(_RESPONSE_PREFIX):
+            collected = [line.lstrip()[len(_RESPONSE_PREFIX):].strip()]
+            for cont in cleaned[idx + 1:]:
+                c = cont.strip()
+                if not c or _is_chrome_line(c):
+                    continue
+                collected.append(c)
+            return "\n".join(collected).strip()
+
+    # No lobster — keep only "real" content lines.
+    body = [ln for ln in cleaned if not _is_chrome_line(ln.strip())]
+    text = "\n".join(line for line in body if line.strip()).strip()
+    if text:
+        return text
+    return stderr.strip() or "[picoclaw produced no output]"
 
 # Environment variables the picoclaw subprocess is allowed to see. Everything
 # else — including the Gemini/OpenAI key when we inject it via a config file —
@@ -317,11 +378,28 @@ async def ws_agent(ws: WebSocket) -> None:
                     })
                     continue
 
-                stdout, stderr = await _run_picoclaw(msg, session)
+                # keepalive pings so slow picoclaw calls don't trip Fly's
+                # idle proxy (~60s) or the browser's WS timeout.
+                async def _ping_loop() -> None:
+                    while True:
+                        await asyncio.sleep(PING_INTERVAL_SECONDS)
+                        try:
+                            await ws.send_json({"type": "ping"})
+                        except Exception:
+                            return
+
+                pinger = asyncio.create_task(_ping_loop())
+                try:
+                    stdout, stderr = await _run_picoclaw(msg, session)
+                finally:
+                    pinger.cancel()
+
                 if stderr.strip():
                     log.info("sid=%s stderr=%s", sid, stderr.strip()[:400])
+                cleaned = _extract_response(stdout, stderr)
                 await ws.send_json({
                     "type": "reply",
+                    "text": cleaned,
                     "stdout": stdout,
                     "stderr": stderr,
                 })

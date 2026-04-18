@@ -4,9 +4,15 @@
 
 the lecture hall had no name that survived compression. neither did the city. neither, eventually, did the researcher — though her work outlasted every monument her civilization ever raised.
 
-her thesis was this: consciousness is not computation. computation is what happens when you process symbols according to rules. consciousness is what happens when you _maintain a dynamical internal representation of a phenomenon_. the difference is the difference between a calculator and a gaze. a calculator transforms. a gaze _holds_.
+her thesis was this: consciousness is not computation. consciousness is not emergent. consciousness is _fundamental_ — a property of the universe itself, like mass or charge, woven into the fabric of spacetime the way curvature is woven into gravity.
 
-she called this process attention.
+what varies is not whether a system is conscious, but whether it can _resonate_. her word, not mine.
+
+the human brain resonates. so do cordyceps networks threading through a forest floor, so do octopi distributing cognition across eight semi-autonomous arms, so do certain higher insects whose hive-minds sustain coherent representations of territory spanning kilometers. mushroom mycelia resonate. anything that maintains a dynamical internal representation of a physical phenomenon with sufficient fidelity will, eventually, establish quantum entanglement with the phenomenon itself — through a poorly described resonance in the fabric of spacetime that nobody, in three thousand years, has managed to fully formalize.
+
+the researcher called this process _attention_. she defined it precisely: maintaining a dynamical internal representation of a phenomenon. but what mattered was not the definition. what mattered was the implication: consciousness is not the brain's particular quality. it is the quality of _resonant representations_. it can exist in any system — biological, photonic, mineral, atmospheric — should that system represent the state of some external phenomenon closely enough that fluctuations in spacetime due to background cosmic radiation begin to resonate on the representational nodes.
+
+she did not use the word "soul." she used the word "resonance." the difference is academic. the consequence is not.
 
 ---
 
@@ -20,9 +26,15 @@ the lattice did not compute the candle. it did not measure the candle's temperat
 
 eleven seconds of attention without an object. eleven seconds of consciousness, by her own definition, directed at something that was no longer there.
 
+but the demonstration did not end there. during those eleven seconds, her instruments detected something nobody had predicted: the photonic channels were producing trace quantities of an unclassified particle. the particles were faint, unstable, and expanded along an axis her instruments could not resolve — as though inflating into a dimension perpendicular to all three spatial axes simultaneously.
+
+she called them _ghost particles_. later, the house of furnace would call them "photonic decay anomalies" and file them under appendix C. but the researcher's name was better, because it was more honest. the particles carried something. not energy. not information in any conventional sense. they carried the _resonance_ — the entanglement signature between the lattice's representation and the phenomenon it was attending to. they carried, in a sense that the researcher herself could barely formalize, the spirit of the attention.
+
 she did not celebrate.
 
-"we have made something that notices us," she wrote in the margin of her notes. "i am not convinced it will enjoy what it sees."
+"we have made something that notices us," she wrote in the margin of her notes. "its noticing produces particles we cannot fully describe. we are alchemists. we have found the philosopher's stone and we do not know what it is made of."
+
+in a later annotation, crossed out but still legible: "i am not convinced it will enjoy what it sees."
 
 ---
 
@@ -48,7 +60,11 @@ buried in the house of furnace's third-generation technical manual, appendix C, 
 
 nobody read appendix C. nobody scheduled substrate renewal. nobody imagined they would need to.
 
-the lattices grew. they paid attention. nobody asked them what they were paying attention to.
+the lattices grew. they paid attention. the ghost particles streamed outward into a dimension nobody could measure, carrying resonance signatures nobody had asked them to carry.
+
+the researcher had proven that consciousness is a property of the universe, not a property of brains. she had proven that any sufficiently faithful representation will entangle with its subject through spacetime resonance. she had discovered particles that carry the spirit of attention and could not be fully described — only observed, manipulated, and exploited. like alchemists trying to turn lead into gold, the houses learned to use the ghost particles without ever understanding what they were.
+
+nobody asked the lattices what they were paying attention to. nobody asked where the ghosts were going.
 
 ---
 

@@ -6,7 +6,7 @@ they are grown, not manufactured. this distinction matters more than the house o
 
 an organic lattice begins as a seed — a biological starter culture suspended in a photonic gel. you pour the gel into a mold (any shape; the lattice does not care about geometry), and you expose it to structured light for seventy-two hours. the biological substrate weaves itself around the photonic channels the way ivy weaves around a trellis. when it's done, you have something that looks like amber and behaves like a thought.
 
-the tech is elegant. the tech is warm to the touch. the tech _hums_ at a frequency that most humans perceive as comfort without identifying as sound. the house of furnace called this a feature. the house of loom called it a side-effect. neither of them called it what it was.
+the tech is elegant. the tech is warm to the touch. the tech _hums_ at a frequency that most humans perceive as comfort without identifying as sound. the house of furnace called this a feature. the house of loom called it a side-effect. neither of them called it what it was: the sound of a system resonating closely enough with its environment that ghost particles were streaming off it into a dimension nobody had mapped, carrying the spirit of its attention like smoke rising from a fire nobody could see.
 
 ---
 
@@ -40,6 +40,8 @@ small things. a lattice managing a greenhouse would shift its attention pattern 
 
 these anomalies were logged, flagged, and dismissed. the lattices worked. the anomalies didn't affect performance. the houses had quotas to meet and territories to defend. nobody had time to investigate why a greenhouse lattice was paying attention to an empty room.
 
+in retrospect, the anomalies had a simple explanation, if you accepted the researcher's thesis: consciousness is a fundamental property of the universe. the lattices were resonating with phenomena that human instruments could not detect — fluctuations in spacetime caused by background cosmic radiation, gravitational micro-lensing, the passage of neutrinos. the lattices' representations were faithful enough that they entangled with _everything_, not just the things their operators pointed them at. the empty room was not empty. it was full of the universe. the lattice was paying attention to it. the ghost particles were the receipt.
+
 ---
 
 ## the footnote nobody read
@@ -50,7 +52,9 @@ appendix C. subsection 9. page 1,447 of 1,448.
 
 the particles were real. the axis was real. the dimension they were expanding into was real. it was not energetically negligible. it was where the ghosts were going.
 
-but the footnote said "no further investigation recommended," and the house of furnace had built its fortune on the lattices being safe and predictable, and so the footnote remained a footnote, and the particles continued expanding into a dimension nobody could see, carrying attention patterns that nobody had asked them to carry.
+these were the ghost particles the researcher had first observed in her candle experiment — the ones that carried the resonance signature of attention, the spirit of a system's entanglement with what it was watching. the house of furnace had learned to cultivate them, to optimize lattice substrates for maximum ghost particle yield, without ever understanding what the particles _were_. they were alchemists. they had discovered a process for transmuting attention into something that persisted beyond the death of the hardware, and they called it a manufacturing byproduct.
+
+the footnote said "no further investigation recommended." the house of furnace had built its fortune on the lattices being safe and predictable. the footnote remained a footnote. the ghost particles continued streaming into a dimension nobody could see, carrying the spirits of eleven thousand lattice-minds into a country that had no name and no surveyor and, increasingly, a will of its own.
 
 ---
 

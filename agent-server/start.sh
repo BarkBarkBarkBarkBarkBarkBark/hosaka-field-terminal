@@ -21,30 +21,33 @@ WORKSPACE_ROOT="${HOSAKA_WORKSPACE_ROOT:-/workspaces}"
 mkdir -p "${CONFIG_DIR}"
 chmod 700 "${CONFIG_DIR}"
 
-# Prefer an already-mounted config if the operator provided one verbatim.
-if [[ -s "${CONFIG_FILE}" ]] && grep -q '"version"' "${CONFIG_FILE}"; then
-  echo "[start.sh] using existing v2 picoclaw config at ${CONFIG_FILE}"
-else
-  # Choose a provider based on which key is present.
-  provider=""
-  api_key=""
-  api_base=""
-  default_model="${PICOCLAW_MODEL:-}"
+# Decide which provider to write into the config based on env vars.
+provider=""
+api_key=""
+api_base=""
+default_model="${PICOCLAW_MODEL:-}"
 
-  if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-    provider="gemini"
-    api_key="${GEMINI_API_KEY}"
-    default_model="${default_model:-gemini/gemini-2.5-flash-lite}"
-  elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    provider="openai"
-    api_key="${OPENAI_API_KEY}"
-    api_base="${OPENAI_API_BASE:-https://api.openai.com/v1}"
-    default_model="${default_model:-openai/gpt-4o-mini}"
-  fi
+if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+  provider="gemini"
+  api_key="${GEMINI_API_KEY}"
+  default_model="${default_model:-gemini/gemini-2.5-flash-lite}"
+elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
+  provider="openai"
+  api_key="${OPENAI_API_KEY}"
+  api_base="${OPENAI_API_BASE:-https://api.openai.com/v1}"
+  default_model="${default_model:-openai/gpt-4o-mini}"
+fi
 
-  if [[ -z "${provider}" ]]; then
-    echo "[start.sh] no GEMINI_API_KEY or OPENAI_API_KEY set; picoclaw will refuse to think." >&2
+# If the operator pre-mounted a custom config and didn't set provider env
+# vars, leave their config alone. Otherwise we always overwrite — this
+# protects against picoclaw's auto-migrator dropping our api_keys.
+if [[ -z "${provider}" ]]; then
+  if [[ -s "${CONFIG_FILE}" ]]; then
+    echo "[start.sh] no provider env var; using existing config at ${CONFIG_FILE}"
   else
+    echo "[start.sh] no GEMINI_API_KEY or OPENAI_API_KEY set; picoclaw will refuse to think." >&2
+  fi
+else
     echo "[start.sh] writing v2 ${CONFIG_FILE} (provider=${provider}, model=${default_model})"
     PICOCLAW_PROVIDER="${provider}" \
     PICOCLAW_API_KEY="${api_key}" \
@@ -118,8 +121,7 @@ cfg = {
 
 cfg_path.write_text(json.dumps(cfg, indent=2))
 PY
-    chmod 600 "${CONFIG_FILE}"
-  fi
+  chmod 600 "${CONFIG_FILE}"
 fi
 
 # Scrub our own env so the subprocess can't echo our secrets back.

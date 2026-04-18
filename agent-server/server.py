@@ -61,14 +61,18 @@ PICOCLAW_MODEL = os.environ.get("PICOCLAW_MODEL", "").strip()
 _RESPONSE_PREFIX = "🦞"
 _ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
 _BANNER_HINTS = (
-    "█",
     "picoclaw",
     "interactive mode",
     "goodbye",
     "ctrl+c",
     "config migrate",
     "saving config",
+    "checking for updates",
+    "no updates available",
 )
+# Box-drawing / banner characters. If a line is overwhelmingly made of these,
+# treat it as chrome.
+_BOX_CHARS = set("█▓▒░╔╗╚╝═║╠╣╦╩╬╬┌┐└┘─│├┤┬┴┼")
 
 
 def _strip_ansi(s: str) -> str:
@@ -76,13 +80,19 @@ def _strip_ansi(s: str) -> str:
 
 
 def _is_chrome_line(clean: str) -> bool:
-    cl = clean.lower()
-    return (
-        not cl
-        or any(h in cl for h in _BANNER_HINTS)
-        # picoclaw log lines look like:  HH:MM:SS INF source/path > message
-        or re.match(r"^\d{2}:\d{2}:\d{2}\s+(INF|WRN|ERR|DBG)\s", clean) is not None
-    )
+    cl = clean.lower().strip()
+    if not cl:
+        return True
+    if any(h in cl for h in _BANNER_HINTS):
+        return True
+    # picoclaw log lines look like:  HH:MM:SS INF source/path > message
+    if re.match(r"^\d{2}:\d{2}:\d{2}\s+(INF|WRN|ERR|DBG)\s", clean):
+        return True
+    # Lines that are mostly box-drawing chars or whitespace.
+    visible = [c for c in clean if not c.isspace()]
+    if visible and sum(c in _BOX_CHARS for c in visible) / len(visible) >= 0.7:
+        return True
+    return False
 
 
 def _extract_response(stdout: str, stderr: str) -> str:

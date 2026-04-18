@@ -10,8 +10,8 @@
 // If you add a new tool, keep it inherently safe. If it can't be, don't add
 // it here — add it to the server-side picoclaw path instead.
 
-import { LORE_FRAGMENTS } from "../shell/content";
-import { COMMANDS } from "../shell/commands";
+import { getLoreFragments } from "../shell/content";
+import { getCommands } from "../shell/commands";
 
 const MEMORY_PREFIX = "hosaka.tools.memory.v1.";
 const MEMORY_KEY_MAX = 40;
@@ -218,14 +218,15 @@ export const TOOL_IMPLS: Record<string, ToolFn> = {
   },
 
   get_lore_fragment: () => {
-    const idx = Math.floor(Math.random() * LORE_FRAGMENTS.length);
+    const frags = getLoreFragments();
+    const idx = Math.floor(Math.random() * frags.length);
     return ok({
       index: idx,
-      text: LORE_FRAGMENTS[idx]!.join("\n"),
+      text: frags[idx]!.join("\n"),
     });
   },
 
-  list_commands: () => ok({ commands: COMMANDS }),
+  list_commands: () => ok({ commands: getCommands() }),
 
   whoami: () => {
     const nav = typeof navigator !== "undefined" ? navigator : undefined;

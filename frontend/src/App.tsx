@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { TerminalPanel } from "./panels/TerminalPanel";
 import { MessagesPanel } from "./panels/MessagesPanel";
 import { ReadingPanel } from "./panels/ReadingPanel";
@@ -6,29 +7,28 @@ import { TodoPanel } from "./panels/TodoPanel";
 import { PlantBadge } from "./components/PlantBadge";
 import { SignalBadge } from "./components/SignalBadge";
 import { SettingsDrawer } from "./components/SettingsDrawer";
+import { LangPicker } from "./components/LangPicker";
 
 export type PanelId = "terminal" | "messages" | "reading" | "todo";
 
-const PANELS: { id: PanelId; label: string; glyph: string }[] = [
-  { id: "terminal", label: "Terminal", glyph: "›_" },
-  { id: "reading", label: "Reading", glyph: "❑" },
-  { id: "todo", label: "Open Loops", glyph: "▣" },
-];
-
-// Settings drawer is hidden in the hosted web build to avoid exposing
-// the agent passphrase. Enable for the desktop/appliance rollout with
-// VITE_SHOW_SETTINGS=1 at build time.
 const SHOW_SETTINGS = import.meta.env.VITE_SHOW_SETTINGS === "1";
 
 export function App() {
+  const { t } = useTranslation("ui");
   const [active, setActive] = useState<PanelId>("terminal");
-  const [bootMessage, setBootMessage] = useState("...waking the orb...");
+  const [bootMessage, setBootMessage] = useState(t("boot.waking"));
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const panels: { id: PanelId; label: string; glyph: string }[] = [
+    { id: "terminal", label: t("tabs.terminal"), glyph: "›_" },
+    { id: "reading", label: t("tabs.reading"), glyph: "❑" },
+    { id: "todo", label: t("tabs.openLoops"), glyph: "▣" },
+  ];
+
   useEffect(() => {
-    const t = setTimeout(() => setBootMessage("signal steady"), 900);
-    return () => clearTimeout(t);
-  }, []);
+    const timer = setTimeout(() => setBootMessage(t("boot.steady")), 900);
+    return () => clearTimeout(timer);
+  }, [t]);
 
   useEffect(() => {
     const onSettings = () => setSettingsOpen(true);
@@ -48,17 +48,18 @@ export function App() {
     <div className="hosaka-shell">
       <header className="hosaka-topbar">
         <div className="hosaka-brand">
-          <span className="hosaka-brand-logo">HOSAKA</span>
-          <span className="hosaka-brand-sub">// field terminal</span>
+          <span className="hosaka-brand-logo">{t("brand")}</span>
+          <span className="hosaka-brand-sub">{t("brandSub")}</span>
         </div>
         <div className="hosaka-topbar-right">
+          <LangPicker />
           <SignalBadge label={bootMessage} />
           <PlantBadge />
           {SHOW_SETTINGS && (
             <button
               className="icon-btn"
-              aria-label="settings"
-              title="settings"
+              aria-label={t("settings")}
+              title={t("settings")}
               onClick={() => setSettingsOpen(true)}
             >
               ⚙
@@ -68,7 +69,7 @@ export function App() {
       </header>
 
       <nav className="hosaka-dock" role="tablist">
-        {PANELS.map((p) => (
+        {panels.map((p) => (
           <button
             key={p.id}
             role="tab"
@@ -102,7 +103,7 @@ export function App() {
       )}
 
       <footer className="hosaka-footer">
-        <span className="hosaka-footer-dim">:: signal steady ::</span>
+        <span className="hosaka-footer-dim">{t("footer")}</span>
       </footer>
     </div>
   );

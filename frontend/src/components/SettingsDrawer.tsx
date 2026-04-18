@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DEFAULT_CONFIG,
   GEMINI_MODELS,
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function SettingsDrawer({ open, onClose }: Props) {
+  const { t } = useTranslation("ui");
   const [cfg, setCfg] = useState<LlmConfig>(loadConfig);
   const [agentCfg, setAgentCfg] = useState<AgentConfig>(loadAgentConfig);
   const [agentPassRevealed, setAgentPassRevealed] = useState(false);
@@ -57,29 +59,23 @@ export function SettingsDrawer({ open, onClose }: Props) {
         className="drawer"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="settings"
+        aria-label={t("settings")}
       >
         <header className="drawer-head">
           <h2>
-            <span className="panel-glyph">⚙</span> Settings
+            <span className="panel-glyph">⚙</span> {t("settingsDrawer.heading")}
           </h2>
           <button className="btn btn-ghost" onClick={onClose}>
-            close
+            {t("settingsDrawer.close")}
           </button>
         </header>
 
         <section className="drawer-section">
-          <h3>Channel</h3>
-          <p className="dim small">
-            picoclaw is the default voice of hosaka — an agentic framework
-            running on a tiny fly.io box, wired to gemini by a server-side key
-            you never see. free text in the terminal goes here. the{" "}
-            <code>/ask</code> command uses the gemini proxy directly for a
-            plain one-shot question.
-          </p>
+          <h3>{t("settingsDrawer.channel.heading")}</h3>
+          <p className="dim small" dangerouslySetInnerHTML={{ __html: t("settingsDrawer.channel.desc") }} />
 
           <label className="drawer-field">
-            <span>gemini model (for /ask only)</span>
+            <span>{t("settingsDrawer.channel.modelLabel")}</span>
             <select
               value={cfg.model}
               onChange={(e) =>
@@ -99,25 +95,21 @@ export function SettingsDrawer({ open, onClose }: Props) {
               className="btn btn-ghost"
               onClick={() => commit({ ...DEFAULT_CONFIG })}
             >
-              reset
+              {t("settingsDrawer.reset")}
             </button>
-            <span className={`drawer-flash ${savedFlash ? "on" : ""}`}>saved ✓</span>
+            <span className={`drawer-flash ${savedFlash ? "on" : ""}`}>{t("settingsDrawer.saved")}</span>
           </div>
         </section>
 
         <section className="drawer-section">
-          <h3>Agent backend — picoclaw</h3>
-          <p className="dim small">
-            advanced: override the default relay url or passphrase. most
-            visitors should leave these alone — say <code>neuro</code> in the
-            terminal and the channel opens on its own.
-          </p>
+          <h3>{t("settingsDrawer.agent.heading")}</h3>
+          <p className="dim small" dangerouslySetInnerHTML={{ __html: t("settingsDrawer.agent.desc") }} />
 
           <label className="drawer-field">
-            <span>websocket url</span>
+            <span>{t("settingsDrawer.agent.wsLabel")}</span>
             <input
               type="url"
-              placeholder="wss://hosaka-agent.fly.dev/ws/agent"
+              placeholder={t("settingsDrawer.agent.wsPlaceholder")}
               value={agentCfg.url}
               onChange={(e) => commitAgent({ ...agentCfg, url: e.target.value.trim() })}
               spellCheck={false}
@@ -126,11 +118,11 @@ export function SettingsDrawer({ open, onClose }: Props) {
           </label>
 
           <label className="drawer-field">
-            <span>passphrase</span>
+            <span>{t("settingsDrawer.agent.passLabel")}</span>
             <div className="drawer-key">
               <input
                 type={agentPassRevealed ? "text" : "password"}
-                placeholder="the phrase the operator shared with you"
+                placeholder={t("settingsDrawer.agent.passPlaceholder")}
                 value={agentCfg.passphrase}
                 onChange={(e) =>
                   commitAgent({ ...agentCfg, passphrase: e.target.value })
@@ -143,13 +135,13 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 onClick={() => setAgentPassRevealed((r) => !r)}
                 type="button"
               >
-                {agentPassRevealed ? "hide" : "show"}
+                {agentPassRevealed ? t("settingsDrawer.agent.hide") : t("settingsDrawer.agent.show")}
               </button>
             </div>
           </label>
 
           <label className="drawer-field">
-            <span>channel</span>
+            <span>{t("settingsDrawer.agent.channelLabel")}</span>
             <select
               value={agentCfg.enabled ? "on" : "off"}
               onChange={(e) =>
@@ -160,8 +152,8 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 })
               }
             >
-              <option value="on">open — typing goes to picoclaw</option>
-              <option value="off">closed — typing is ignored (say neuro to reopen)</option>
+              <option value="on">{t("settingsDrawer.agent.channelOn")}</option>
+              <option value="off">{t("settingsDrawer.agent.channelOff")}</option>
             </select>
           </label>
 
@@ -170,19 +162,19 @@ export function SettingsDrawer({ open, onClose }: Props) {
               className="btn btn-ghost"
               onClick={() => commitAgent({ ...DEFAULT_AGENT_CONFIG })}
             >
-              reset
+              {t("settingsDrawer.reset")}
             </button>
           </div>
         </section>
 
         <section className="drawer-section dim small">
-          <h3>about storage</h3>
+          <h3>{t("settingsDrawer.storage.heading")}</h3>
           <ul>
-            <li>gemini model preference: browser <code>localStorage</code></li>
-            <li>agent url + passphrase: browser <code>localStorage</code></li>
-            <li>messages log: browser <code>localStorage</code></li>
-            <li>the gemini api key lives only in vercel env vars — the browser never sees it</li>
-            <li>picoclaw persists per-session history on the fly.io volume; your browser never sees it</li>
+            <li dangerouslySetInnerHTML={{ __html: t("settingsDrawer.storage.model") }} />
+            <li dangerouslySetInnerHTML={{ __html: t("settingsDrawer.storage.agentCreds") }} />
+            <li dangerouslySetInnerHTML={{ __html: t("settingsDrawer.storage.messagesLog") }} />
+            <li>{t("settingsDrawer.storage.geminiKey")}</li>
+            <li>{t("settingsDrawer.storage.picoclaw")}</li>
           </ul>
         </section>
       </aside>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type Msg = {
   id: string;
@@ -10,8 +11,6 @@ type Msg = {
 
 type Config = {
   webhook: string;
-  // Discord / Slack both accept { content: string } via incoming webhooks,
-  // so we treat it as a "generic JSON POST" for any compatible endpoint.
   kind: "discord" | "slack" | "generic";
   username: string;
 };
@@ -60,22 +59,15 @@ function id(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-const ORB_REPLIES = [
-  "received. the signal is steady.",
-  "the orb acknowledges your transmission.",
-  "noted. filed under 'maybe important'.",
-  "your words persist in the margins.",
-  "mmm. go on.",
-  "i hear you. the network is patient.",
-  "compressed. archived. held.",
-];
-
 export function MessagesPanel() {
+  const { t } = useTranslation("ui");
   const [messages, setMessages] = useState<Msg[]>(loadMessages);
   const [config, setConfig] = useState<Config>(loadConfig);
   const [draft, setDraft] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
+
+  const orbReplies = t("messages.orbReplies", { returnObjects: true }) as string[];
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-200)));
@@ -105,14 +97,13 @@ export function MessagesPanel() {
     setDraft("");
 
     if (!config.webhook) {
-      // Offline mode: reply with a cheeky orb.
       setTimeout(() => {
         push({
           id: id(),
           at: Date.now(),
           from: "orb",
           text:
-            ORB_REPLIES[Math.floor(Math.random() * ORB_REPLIES.length)] ?? "...",
+            orbReplies[Math.floor(Math.random() * orbReplies.length)] ?? "...",
         });
       }, 600 + Math.random() * 800);
       setMessages((prev) =>
@@ -138,7 +129,7 @@ export function MessagesPanel() {
           id: id(),
           at: Date.now(),
           from: "system",
-          text: `webhook said no: ${res.status} ${res.statusText}`,
+          text: t("messages.webhookError", { status: res.status, statusText: res.statusText }),
         });
       }
     } catch (err: unknown) {
@@ -149,7 +140,7 @@ export function MessagesPanel() {
         id: id(),
         at: Date.now(),
         from: "system",
-        text: `network refused the transmission: ${(err as Error).message}`,
+        text: t("messages.networkError", { message: (err as Error).message }),
       });
     }
   };
@@ -160,39 +151,38 @@ export function MessagesPanel() {
     <div className="messages-wrap">
       <div className="panel-header">
         <h2>
-          <span className="panel-glyph">✉</span> Messages
+          <span className="panel-glyph">✉</span> {t("messages.heading")}
         </h2>
         <p className="panel-sub">
-          talk to the orb (offline) or to any JSON webhook you configure:
-          discord, slack, or your own endpoint. no backend required.
+          {t("messages.sub")}
         </p>
       </div>
 
       <div className="messages-toolbar">
         <span className="dim">
-          mode: <strong>{config.webhook ? config.kind : "offline"}</strong>
+          {t("messages.modeLabel")} <strong>{config.webhook ? config.kind : t("messages.offline")}</strong>
           {config.webhook ? (
             <> → {new URL(config.webhook).host}</>
           ) : (
-            <> (orb only)</>
+            <> {t("messages.orbOnly")}</>
           )}
         </span>
         <div className="spacer" />
         <button className="btn btn-ghost" onClick={() => setShowSettings((s) => !s)}>
-          {showSettings ? "close settings" : "settings"}
+          {showSettings ? t("messages.closeSettings") : t("messages.openSettings")}
         </button>
         <button className="btn btn-ghost" onClick={clearLog}>
-          clear
+          {t("messages.clear")}
         </button>
       </div>
 
       {showSettings && (
         <div className="messages-settings">
           <label>
-            <span>webhook url</span>
+            <span>{t("messages.webhookLabel")}</span>
             <input
               type="url"
-              placeholder="https://discord.com/api/webhooks/... or https://hooks.slack.com/..."
+              placeholder={t("messages.webhookPlaceholder")}
               value={config.webhook}
               onChange={(e) =>
                 setConfig({ ...config, webhook: e.target.value.trim() })
@@ -200,37 +190,34 @@ export function MessagesPanel() {
             />
           </label>
           <label>
-            <span>kind</span>
+            <span>{t("messages.kindLabel")}</span>
             <select
               value={config.kind}
               onChange={(e) =>
                 setConfig({ ...config, kind: e.target.value as Config["kind"] })
               }
             >
-              <option value="generic">generic (json)</option>
-              <option value="discord">discord</option>
-              <option value="slack">slack</option>
+              <option value="generic">{t("messages.kindGeneric")}</option>
+              <option value="discord">{t("messages.kindDiscord")}</option>
+              <option value="slack">{t("messages.kindSlack")}</option>
             </select>
           </label>
           <label>
-            <span>display name</span>
+            <span>{t("messages.displayNameLabel")}</span>
             <input
               type="text"
               value={config.username}
               onChange={(e) => setConfig({ ...config, username: e.target.value })}
             />
           </label>
-          <p className="dim small">
-            stored locally in <code>localStorage</code>. nothing leaves this
-            browser except the message you send.
-          </p>
+          <p className="dim small" dangerouslySetInnerHTML={{ __html: t("messages.storageNote") }} />
         </div>
       )}
 
       <div className="messages-log" ref={logRef}>
         {messages.length === 0 && (
           <div className="messages-empty dim">
-            nothing yet. say hi to the orb.
+            {t("messages.empty")}
           </div>
         )}
         {messages.map((m) => (
@@ -260,7 +247,7 @@ export function MessagesPanel() {
       >
         <textarea
           rows={2}
-          placeholder="transmit something..."
+          placeholder={t("messages.placeholder")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -271,7 +258,7 @@ export function MessagesPanel() {
           }}
         />
         <button className="btn btn-primary" type="submit" disabled={!draft.trim()}>
-          send
+          {t("messages.send")}
         </button>
       </form>
     </div>

@@ -239,6 +239,16 @@ html, body, #root {
 
 .plant-glyph { color: var(--green); }
 
+.lang-picker {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
 /* ── terminal panel ──────────────────────────────────────── */
 
 .terminal-wrap {

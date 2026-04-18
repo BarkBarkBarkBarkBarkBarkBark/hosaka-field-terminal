@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type Loop = {
   id: string;
@@ -24,6 +25,7 @@ function saveLoops(loops: Loop[]): void {
 }
 
 export function TodoPanel() {
+  const { t } = useTranslation("ui");
   const [loops, setLoops] = useState<Loop[]>(loadLoops);
   const [draft, setDraft] = useState("");
 
@@ -63,9 +65,9 @@ export function TodoPanel() {
   };
 
   const submit = () => {
-    const t = draft.trim();
-    if (!t) return;
-    addLoop(t);
+    const text = draft.trim();
+    if (!text) return;
+    addLoop(text);
     setDraft("");
   };
 
@@ -76,40 +78,37 @@ export function TodoPanel() {
     <div className="todo-wrap">
       <header className="panel-header">
         <h2>
-          <span className="panel-glyph">▣</span> open loops
+          <span className="panel-glyph">▣</span> {t("todo.heading")}
         </h2>
         <p className="panel-sub">
-          things to remember. things to close. stored in this browser only.
+          {t("todo.sub")}
         </p>
       </header>
 
       <div className="todo-compose">
         <input
           type="text"
-          placeholder="add an open loop…"
+          placeholder={t("todo.placeholder")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           spellCheck={false}
         />
         <button className="btn" onClick={submit} disabled={!draft.trim()}>
-          add
+          {t("todo.addBtn")}
         </button>
       </div>
 
       <div className="todo-list">
         {open.length === 0 && closed.length === 0 && (
-          <p className="todo-empty">
-            no open loops. type <code>/todo add remember the signal</code> in
-            the terminal, or use the field above.
-          </p>
+          <p className="todo-empty" dangerouslySetInnerHTML={{ __html: t("todo.empty") }} />
         )}
         {open.map((l) => (
           <div key={l.id} className="todo-item">
             <button
               className="todo-check"
               onClick={() => toggle(l.id)}
-              aria-label="close loop"
+              aria-label={t("todo.closeLoop")}
             >
               ○
             </button>
@@ -117,7 +116,7 @@ export function TodoPanel() {
             <button
               className="todo-remove btn btn-ghost"
               onClick={() => remove(l.id)}
-              aria-label="delete"
+              aria-label={t("todo.delete")}
             >
               ×
             </button>
@@ -125,13 +124,13 @@ export function TodoPanel() {
         ))}
         {closed.length > 0 && (
           <>
-            <div className="todo-section-label">closed</div>
+            <div className="todo-section-label">{t("todo.closedSection")}</div>
             {closed.map((l) => (
               <div key={l.id} className="todo-item todo-closed">
                 <button
                   className="todo-check"
                   onClick={() => toggle(l.id)}
-                  aria-label="reopen loop"
+                  aria-label={t("todo.reopenLoop")}
                 >
                   ●
                 </button>
@@ -139,7 +138,7 @@ export function TodoPanel() {
                 <button
                   className="todo-remove btn btn-ghost"
                   onClick={() => remove(l.id)}
-                  aria-label="delete"
+                  aria-label={t("todo.delete")}
                 >
                   ×
                 </button>

@@ -1,43 +1,51 @@
+import i18next from "i18next";
+
 export type CommandEntry = {
   cmd: string;
   desc: string;
   cat: string;
 };
 
-export const COMMANDS: readonly CommandEntry[] = [
-  { cmd: "/help",      desc: "quick start guide",                   cat: "Reference" },
-  { cmd: "/commands",  desc: "this list",                           cat: "Reference" },
-  { cmd: "/about",     desc: "what is this thing",                  cat: "Reference" },
-  { cmd: "/docs",      desc: "link to the original field terminal", cat: "Reference" },
+function st(key: string): string {
+  return i18next.t(key, { ns: "shell" });
+}
 
-  { cmd: "/ask <x>",   desc: "ask the orb a question (via gemini)", cat: "Chat & AI" },
-  { cmd: "/model",     desc: "show or set the gemini model",        cat: "Chat & AI" },
-  { cmd: "/reset",     desc: "forget the current conversation",     cat: "Chat & AI" },
-  { cmd: "/settings",  desc: "open the settings drawer",            cat: "Chat & AI" },
+export function getCommands(): CommandEntry[] {
+  return [
+    { cmd: "/help",      desc: st("commands.helpDesc"),        cat: st("commands.catReference") },
+    { cmd: "/commands",  desc: st("commands.commandsDesc"),    cat: st("commands.catReference") },
+    { cmd: "/about",     desc: st("commands.aboutDesc"),       cat: st("commands.catReference") },
+    { cmd: "/docs",      desc: st("commands.docsDesc"),        cat: st("commands.catReference") },
 
-  { cmd: "/agent",         desc: "show picoclaw agent status",        cat: "Agent" },
-  { cmd: "/agent on|off",  desc: "route input to picoclaw instead",   cat: "Agent" },
-  { cmd: "/agent test",    desc: "ping the agent backend",            cat: "Agent" },
-  { cmd: "!<cmd>",         desc: "run a shell command in the sandbox", cat: "Agent" },
+    { cmd: "/ask <x>",   desc: st("commands.askDesc"),         cat: st("commands.catChatAI") },
+    { cmd: "/model",     desc: st("commands.modelDesc"),       cat: st("commands.catChatAI") },
+    { cmd: "/reset",     desc: st("commands.resetDesc"),       cat: st("commands.catChatAI") },
+    { cmd: "/settings",  desc: st("commands.settingsDesc"),    cat: st("commands.catChatAI") },
 
-  { cmd: "/netscan",   desc: "theatrical + real network scanner",   cat: "Network" },
+    { cmd: "/agent",         desc: st("commands.agentDesc"),       cat: st("commands.catAgent") },
+    { cmd: "/agent on|off",  desc: st("commands.agentToggleDesc"), cat: st("commands.catAgent") },
+    { cmd: "/agent test",    desc: st("commands.agentTestDesc"),   cat: st("commands.catAgent") },
+    { cmd: "!<cmd>",         desc: st("commands.shellDesc"),       cat: st("commands.catAgent") },
 
-  { cmd: "/read",      desc: "list library fragments",              cat: "Reading" },
-  { cmd: "/read <slug>", desc: "open a fragment in the reading tab", cat: "Reading" },
-  { cmd: "/read order", desc: "the kindle relay (coming soon)",      cat: "Reading" },
+    { cmd: "/netscan",   desc: st("commands.netscanDesc"),     cat: st("commands.catNetwork") },
 
-  { cmd: "/todo",      desc: "open the open loops panel",           cat: "Open Loops" },
-  { cmd: "/todo add <x>", desc: "add a loop from the terminal",     cat: "Open Loops" },
-  { cmd: "/todo list", desc: "list open loops in-terminal",          cat: "Open Loops" },
+    { cmd: "/read",      desc: st("commands.readDesc"),        cat: st("commands.catReading") },
+    { cmd: "/read <slug>", desc: st("commands.readSlugDesc"),  cat: st("commands.catReading") },
+    { cmd: "/read order", desc: st("commands.readOrderDesc"),  cat: st("commands.catReading") },
 
-  { cmd: "/status",    desc: "hosted-mode status",                  cat: "System" },
-  { cmd: "/signal",    desc: "confirm persistence",                 cat: "System" },
-  { cmd: "/clear",     desc: "wipe the screen",                     cat: "System" },
+    { cmd: "/todo",      desc: st("commands.todoDesc"),        cat: st("commands.catOpenLoops") },
+    { cmd: "/todo add <x>", desc: st("commands.todoAddDesc"),  cat: st("commands.catOpenLoops") },
+    { cmd: "/todo list", desc: st("commands.todoListDesc"),    cat: st("commands.catOpenLoops") },
 
-  { cmd: "/plant",     desc: "check the alien plant",               cat: "Tools" },
-  { cmd: "/orb",       desc: "the orb sees you",                    cat: "Tools" },
-  { cmd: "/lore",      desc: "fragments from before the cascade",   cat: "Tools" },
-  { cmd: "/echo <x>",  desc: "say something back at yourself",      cat: "Tools" },
+    { cmd: "/status",    desc: st("commands.statusDesc"),      cat: st("commands.catSystem") },
+    { cmd: "/signal",    desc: st("commands.signalDesc"),      cat: st("commands.catSystem") },
+    { cmd: "/clear",     desc: st("commands.clearDesc"),       cat: st("commands.catSystem") },
 
-  { cmd: "/messages",  desc: "hint: open the messages tab",         cat: "Panels" },
-];
+    { cmd: "/plant",     desc: st("commands.plantDesc"),       cat: st("commands.catTools") },
+    { cmd: "/orb",       desc: st("commands.orbDesc"),         cat: st("commands.catTools") },
+    { cmd: "/lore",      desc: st("commands.loreDesc"),        cat: st("commands.catTools") },
+    { cmd: "/echo <x>",  desc: st("commands.echoDesc"),       cat: st("commands.catTools") },
+
+    { cmd: "/messages",  desc: st("commands.messagesDesc"),    cat: st("commands.catPanels") },
+  ];
+}

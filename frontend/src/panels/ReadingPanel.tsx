@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import i18next from "i18next";
 
 type LibraryEntry = {
   slug: string;
@@ -13,7 +15,17 @@ type LibraryEntry = {
 
 type Props = { active: boolean };
 
+function libraryPath(slug: string): string {
+  const lang = i18next.language?.split("-")[0] ?? "en";
+  return `/library/${lang}/${slug}.md`;
+}
+
+function libraryFallback(slug: string): string {
+  return `/library/en/${slug}.md`;
+}
+
 export function ReadingPanel({ active }: Props) {
+  const { t } = useTranslation("ui");
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState<string>("");
@@ -42,12 +54,18 @@ export function ReadingPanel({ active }: Props) {
       return;
     }
     setLoading(true);
-    fetch(`/library/${selected}.md`)
-      .then((r) => (r.ok ? r.text() : "signal lost. document not found."))
-      .then((t) => setContent(t))
-      .catch(() => setContent("signal lost. document not found."))
+    const errMsg = t("reading.errorNotFound");
+    fetch(libraryPath(selected))
+      .then((r) => {
+        if (r.ok) return r.text();
+        return fetch(libraryFallback(selected)).then((fb) =>
+          fb.ok ? fb.text() : errMsg,
+        );
+      })
+      .then((txt) => setContent(txt))
+      .catch(() => setContent(errMsg))
       .finally(() => setLoading(false));
-  }, [selected]);
+  }, [selected, t]);
 
   useEffect(() => {
     if (active && !selected && entries.length > 0) {
@@ -61,7 +79,7 @@ export function ReadingPanel({ active }: Props) {
     <div className="reading-wrap">
       <div className="reading-sidebar">
         <div className="reading-sidebar-head">
-          <span className="panel-glyph">❑</span> library
+          <span className="panel-glyph">❑</span> {t("reading.sidebarHead")}
         </div>
         {entries.map((e) => (
           <button
@@ -84,22 +102,22 @@ export function ReadingPanel({ active }: Props) {
               )
             }
           >
-            /read order →
+            {t("reading.orderBtn")}
           </button>
         </div>
       </div>
 
       <div className="reading-content">
         {loading && (
-          <p className="reading-loading">… loading fragment …</p>
+          <p className="reading-loading">{t("reading.loading")}</p>
         )}
         {!loading && content && (
           <>
             {entry && (
               <div className="reading-entry-tags">
-                {entry.tags.map((t) => (
-                  <span key={t} className="reading-tag">
-                    {t}
+                {entry.tags.map((tag) => (
+                  <span key={tag} className="reading-tag">
+                    {tag}
                   </span>
                 ))}
               </div>
@@ -111,8 +129,8 @@ export function ReadingPanel({ active }: Props) {
         )}
         {!loading && !content && (
           <div className="reading-empty">
-            <p>select a fragment from the sidebar.</p>
-            <p className="dim">or type <code>/read</code> in the terminal.</p>
+            <p>{t("reading.emptySelect")}</p>
+            <p className="dim" dangerouslySetInnerHTML={{ __html: t("reading.emptyHint") }} />
           </div>
         )}
       </div>

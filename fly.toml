@@ -1,56 +1,23 @@
-# fly.io configuration for the hosaka agent-server (FastAPI + picoclaw).
+# fly.toml app configuration file generated for hosaka-field-terminal-77b790f on 2026-04-18T06:44:41Z
 #
-# The Dockerfile and this config live at the repo ROOT so `fly launch` and
-# `fly deploy` work from here with no flags.  The Python sources live under
-# agent-server/ and are copied in by the Dockerfile.
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
-# One-time setup:
-#   fly launch --no-deploy --copy-config
-#   fly volumes create hosaka_sessions --size 1 --region iad
-#   fly secrets set \
-#     HOSAKA_ACCESS_TOKEN='choose a long passphrase' \
-#     GEMINI_API_KEY='your-gemini-key' \
-#     HOSAKA_ALLOWED_ORIGINS='https://YOUR-PROJECT.vercel.app'
-#   fly deploy
-#
-# Scaling: one shared-cpu-1x @ 256MB auto-stops when idle (pennies/day).
 
-app = "hosaka-agent"
-primary_region = "iad"
+app = 'hosaka-field-terminal-77b790f'
+primary_region = 'ams'
 
 [build]
-  dockerfile = "Dockerfile"
-
-[env]
-  PORT = "8080"
-  HOSAKA_WORKSPACE_ROOT = "/workspaces"
-  HOSAKA_SESSION_TTL = "300"
-  HOSAKA_MSG_TIMEOUT = "45"
-  HOSAKA_MSG_MAX_CHARS = "4000"
-  HOSAKA_RATE_PER_MIN = "30"
-  PICOCLAW_MODEL = "gemini/gemini-2.5-flash-lite"
-
-# Persistent volume for picoclaw session state + scratch workspaces.
-# Cheap (1GB = $0.15/mo). Optional — remove this block if you want fully
-# ephemeral sessions.
-[mounts]
-  source = "hosaka_sessions"
-  destination = "/workspaces"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
-
-  [[http_service.checks]]
-    interval = "30s"
-    timeout  = "5s"
-    method   = "GET"
-    path     = "/healthz"
+  processes = ['app']
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256

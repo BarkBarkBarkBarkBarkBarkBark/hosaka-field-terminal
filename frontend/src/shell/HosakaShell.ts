@@ -24,7 +24,17 @@ import {
   type AgentConfig,
   type AgentErrorCode,
 } from "../llm/agentClient";
-import { generatePacketLine, realFrameTag, netscanHeader } from "./netscan";
+import {
+  generatePacket,
+  packetToRow,
+  tableHeader,
+  netscanHeader,
+  realFrameTag,
+  portsLine,
+  packetCountLine,
+  newPortTracker,
+  trackPacket,
+} from "./netscan";
 
 // ANSI helpers
 const ESC = "\x1b[";
@@ -958,34 +968,61 @@ export class HosakaShell {
     const agentCfg = loadAgentConfig();
     this.writeln(netscanHeader());
     if (!agentCfg.enabled) {
-      this.writeln(`  ${DARK_GRAY}(channel quiet — showing the rehearsal feed only.)${R}`);
+      this.writeln(`  ${DARK_GRAY}(channel quiet — rehearsal feed only)${R}`);
     }
     this.writeln("");
+    this.writeln(tableHeader());
 
     let tickCount = 0;
+    const startTime = Date.now();
+    const tracker = newPortTracker();
     const agent = agentCfg.enabled ? getAgent(agentCfg) : null;
 
+    // Two status lines at the bottom that update in place:
+    // line 1: open ports summary
+    // line 2: packet count + rate
+    // We write them once, then overwrite them each tick by cursor-up.
+    this.writeln("");
+    this.writeln("");
+
     this.netscanTimer = window.setInterval(() => {
-      this.writeln(`  ${generatePacketLine()}`);
+      const pkt = generatePacket();
+      trackPacket(tracker, pkt);
       tickCount += 1;
-      // Interleave real data every ~15 ticks (~3 seconds at 200ms intervals)
+
+      const elapsed = Math.max(1, (Date.now() - startTime) / 1000);
+      const rate = Math.round(tickCount / elapsed);
+
+      // Move up 2 (the status lines), insert a new row before them
+      this.write(`\x1b[2A`);
+      this.writeln(`  ${packetToRow(pkt)}`);
+      // Rewrite status lines
+      this.write(`\r\x1b[K`);
+      this.writeln(portsLine(tracker));
+      this.write(`\r\x1b[K`);
+      this.write(packetCountLine(tickCount, rate));
+
       if (agent && tickCount % 15 === 0) {
         void agent.runShell("ss -tunp 2>/dev/null | tail -5").then((r) => {
           if (this.netscanTimer === null) return;
           if (r.ok && r.stdout.trim()) {
             for (const line of r.stdout.trim().split("\n").slice(0, 3)) {
+              this.write(`\x1b[2A`);
               this.writeln(`  ${realFrameTag(line)}`);
+              this.writeln(portsLine(tracker));
+              this.write(packetCountLine(tickCount, Math.round(tickCount / Math.max(1, (Date.now() - startTime) / 1000))));
             }
           }
         });
       }
-    }, 80 + Math.floor(Math.random() * 120));
+    }, 120 + Math.floor(Math.random() * 80));
   }
 
   private stopNetscan(): void {
     if (this.netscanTimer === null) return;
     window.clearInterval(this.netscanTimer);
     this.netscanTimer = null;
+    this.writeln("");
     this.writeln("");
     this.writeln(`  ${GRAY}netscan stopped.${R}`);
     this.writeln("");

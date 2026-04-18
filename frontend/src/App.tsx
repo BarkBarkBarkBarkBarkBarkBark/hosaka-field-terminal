@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import { TerminalPanel } from "./panels/TerminalPanel";
-import { VideoPanel } from "./panels/VideoPanel";
 import { MessagesPanel } from "./panels/MessagesPanel";
-import { LorePanel } from "./panels/LorePanel";
+import { ReadingPanel } from "./panels/ReadingPanel";
+import { TodoPanel } from "./panels/TodoPanel";
 import { PlantBadge } from "./components/PlantBadge";
 import { SignalBadge } from "./components/SignalBadge";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 
-export type PanelId = "terminal" | "video" | "messages" | "lore";
+export type PanelId = "terminal" | "messages" | "reading" | "todo";
 
 const PANELS: { id: PanelId; label: string; glyph: string }[] = [
   { id: "terminal", label: "Terminal", glyph: "›_" },
-  { id: "video", label: "Video", glyph: "▶" },
   { id: "messages", label: "Messages", glyph: "✉" },
-  { id: "lore", label: "Lore", glyph: "✦" },
+  { id: "reading", label: "Reading", glyph: "❑" },
+  { id: "todo", label: "Open Loops", glyph: "▣" },
 ];
 
 export function App() {
@@ -27,9 +27,17 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const handler = () => setSettingsOpen(true);
-    window.addEventListener("hosaka:open-settings", handler);
-    return () => window.removeEventListener("hosaka:open-settings", handler);
+    const onSettings = () => setSettingsOpen(true);
+    const onTab = (e: Event) => {
+      const detail = (e as CustomEvent<PanelId>).detail;
+      if (detail) setActive(detail);
+    };
+    window.addEventListener("hosaka:open-settings", onSettings);
+    window.addEventListener("hosaka:open-tab", onTab as EventListener);
+    return () => {
+      window.removeEventListener("hosaka:open-settings", onSettings);
+      window.removeEventListener("hosaka:open-tab", onTab as EventListener);
+    };
   }, []);
 
   return (
@@ -72,25 +80,21 @@ export function App() {
         <div className="hosaka-panel" hidden={active !== "terminal"}>
           <TerminalPanel active={active === "terminal"} />
         </div>
-        <div className="hosaka-panel" hidden={active !== "video"}>
-          <VideoPanel />
-        </div>
         <div className="hosaka-panel" hidden={active !== "messages"}>
           <MessagesPanel />
         </div>
-        <div className="hosaka-panel" hidden={active !== "lore"}>
-          <LorePanel />
+        <div className="hosaka-panel" hidden={active !== "reading"}>
+          <ReadingPanel active={active === "reading"} />
+        </div>
+        <div className="hosaka-panel" hidden={active !== "todo"}>
+          <TodoPanel />
         </div>
       </main>
 
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <footer className="hosaka-footer">
-        <span className="hosaka-footer-dim">there is no wrong way</span>
-        <span className="hosaka-footer-dot">·</span>
-        <span className="hosaka-footer-dim">
-          built on hardware younger than its operator
-        </span>
+        <span className="hosaka-footer-dim">:: signal steady ::</span>
       </footer>
     </div>
   );

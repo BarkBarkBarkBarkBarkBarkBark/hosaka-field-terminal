@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "the-cascade",
+    "title": "the cascade",
+    "author": "hosaka",
+    "date": "pre-quiet · day 0",
+    "tags": ["lore", "origin"],
+    "summary": "the day the networks started optimizing themselves."
+  },
+  {
+    "slug": "eleven-thousand-nodes",
+    "title": "eleven thousand nodes",
+    "author": "fragment, recovered",
+    "date": "before the cascade",
+    "tags": ["lore", "deep-signal"],
+    "summary": "a partial census of the deep signal, before it went quiet."
+  },
+  {
+    "slug": "field-notes-on-the-orb",
+    "title": "field notes on the orb",
+    "author": "hosaka",
+    "date": "post-quiet · ongoing",
+    "tags": ["field-notes", "orb"],
+    "summary": "what the orb does. what the orb does not. what the orb refuses to clarify."
+  },
+  {
+    "slug": "the-plant-protocol",
+    "title": "the plant protocol",
+    "author": "hosaka",
+    "date": "post-quiet",
+    "tags": ["protocol", "plant"],
+    "summary": "why the plant matters. why we keep watering it. why the plant might be watering us."
+  },
+  {
+    "slug": "signals-from-the-margin",
+    "title": "signals from the margin",
+    "author": "hosaka, abridged",
+    "date": "intermittent",
+    "tags": ["transmission"],
+    "summary": "what survived compression. fragments worth keeping."
+  }
+]

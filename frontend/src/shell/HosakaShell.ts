@@ -24,6 +24,7 @@ import {
   type AgentConfig,
   type AgentErrorCode,
 } from "../llm/agentClient";
+import { generatePacketLine, realFrameTag, netscanHeader } from "./netscan";
 
 // ANSI helpers
 const ESC = "\x1b[";
@@ -64,6 +65,7 @@ export class HosakaShell {
   private llmHistory: LlmMessage[] = [];
   private busy = false;
   private thinkingTimer: number | null = null;
+  private netscanTimer: number | null = null;
 
   constructor(private readonly term: Terminal) {}
 
@@ -139,7 +141,11 @@ export class HosakaShell {
       } else if (ch === "\x7f" || ch === "\b") {
         this.backspace();
       } else if (ch === "\x03") {
-        // Ctrl-C
+        // Ctrl-C — also kills netscan if running
+        if (this.netscanTimer !== null) {
+          this.stopNetscan();
+          return;
+        }
         this.write("^C");
         this.writeln("");
         this.buffer = "";
@@ -239,12 +245,19 @@ export class HosakaShell {
     }
 
     if (raw.startsWith("!")) {
-      this.writeln(
-        `  ${AMBER}[sandbox]${R} shell passthrough is disabled in the hosted build.`,
-      );
-      this.writeln(
-        `  ${GRAY}install the appliance to run real shells. see /docs.${R}`,
-      );
+      const cmd = raw.slice(1).trim();
+      if (!cmd) {
+        this.writeln(`  ${GRAY}usage: !ls, !cat README.md, etc.${R}`);
+        this.writePrompt();
+        return;
+      }
+      const agentCfg = loadAgentConfig();
+      if (!agentCfg.enabled) {
+        this.writeln(`  ${GRAY}the channel is quiet — ${VIOLET}whisper the word${R}${GRAY} first.${R}`);
+        this.writePrompt();
+        return;
+      }
+      await this.shellPassthrough(cmd, agentCfg);
       this.writePrompt();
       return;
     }
@@ -308,13 +321,20 @@ export class HosakaShell {
           `  ${AMBER}https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka${R}`,
         );
         break;
-      case "/video":
       case "/messages":
       case "/terminal":
-      case "/lorepanel":
         this.writeln(
           `  ${GRAY}switch tabs at the top to open the ${cmd.slice(1)} panel.${R}`,
         );
+        break;
+      case "/read":
+        this.handleRead(arg);
+        break;
+      case "/todo":
+        this.handleTodo(arg);
+        break;
+      case "/netscan":
+        await this.netscan();
         break;
       case "/exit":
         this.writeln(`  ${GRAY}there's nowhere to exit to. you're already here.${R}`);
@@ -741,6 +761,145 @@ export class HosakaShell {
       this.writeln(`  ${DARK_GRAY}${line}${R}`);
     }
     this.writeln("");
+  }
+
+  // ── /read command ────────────────────────────────────────────────────────
+  private handleRead(arg: string): void {
+    if (!arg) {
+      this.writeln(`  ${AMBER}library${R} — reading material from the signal`);
+      this.writeln("");
+      fetch("/library/index.json")
+        .then((r) => r.json())
+        .then((entries: { slug: string; title: string; summary: string }[]) => {
+          for (const e of entries) {
+            this.writeln(`    ${CYAN}${e.slug}${R}  ${GRAY}${e.summary}${R}`);
+          }
+          this.writeln("");
+          this.writeln(`  ${GRAY}usage: /read <slug>  or switch to the reading tab.${R}`);
+          this.writePrompt();
+        })
+        .catch(() => {
+          this.writeln(`  ${GRAY}the library is quiet. try again.${R}`);
+          this.writePrompt();
+        });
+      return;
+    }
+    if (arg === "order") {
+      this.writeln(`  ${GRAY}the kindle relay isn't tuned yet — coming soon.${R}`);
+      this.writeln(`  ${GRAY}for now, the local library is open. try ${CYAN}/read${R}${GRAY}.${R}`);
+      return;
+    }
+    window.dispatchEvent(new CustomEvent("hosaka:read", { detail: arg }));
+    window.dispatchEvent(new CustomEvent("hosaka:open-tab", { detail: "reading" }));
+    this.writeln(`  ${GRAY}opening ${CYAN}${arg}${R}${GRAY} in the reading panel.${R}`);
+  }
+
+  // ── /todo command ───────────────────────────────────────────────────────
+  private handleTodo(arg: string): void {
+    if (!arg) {
+      window.dispatchEvent(new CustomEvent("hosaka:open-tab", { detail: "todo" }));
+      this.writeln(`  ${GRAY}opened the open loops panel.${R}`);
+      return;
+    }
+    const parts = arg.split(/\s+/);
+    const sub = parts[0];
+    if (sub === "add") {
+      const text = parts.slice(1).join(" ").trim();
+      if (!text) {
+        this.writeln(`  ${GRAY}usage: /todo add remember the signal${R}`);
+        return;
+      }
+      window.dispatchEvent(new CustomEvent("hosaka:todo-add", { detail: text }));
+      this.writeln(`  ${GRAY}loop opened: ${CYAN}${text}${R}`);
+      return;
+    }
+    if (sub === "list") {
+      try {
+        const raw = localStorage.getItem("hosaka.todo.v1");
+        const loops: { text: string; closed: boolean }[] = raw ? JSON.parse(raw) : [];
+        const open = loops.filter((l) => !l.closed);
+        if (open.length === 0) {
+          this.writeln(`  ${GRAY}no open loops.${R}`);
+          return;
+        }
+        for (const l of open) {
+          this.writeln(`    ${CYAN}○${R} ${l.text}`);
+        }
+      } catch {
+        this.writeln(`  ${GRAY}couldn't read loops.${R}`);
+      }
+      return;
+    }
+    this.writeln(`  ${GRAY}usage: /todo  ·  /todo add <text>  ·  /todo list${R}`);
+  }
+
+  // ── !cmd shell passthrough ──────────────────────────────────────────────
+  private async shellPassthrough(cmd: string, cfg: AgentConfig): Promise<void> {
+    this.busy = true;
+    this.writeln(`  ${DARK_GRAY}$ ${cmd}${R}`);
+    try {
+      const agent = getAgent(cfg);
+      const res = await agent.runShell(cmd);
+      if (!res.ok) {
+        this.writeAgentFallback(res.code);
+        return;
+      }
+      const color = res.exit === 0 ? "" : RED;
+      if (res.stdout.trim()) {
+        for (const line of res.stdout.trimEnd().split("\n")) {
+          this.writeln(`  ${color}${line}${R}`);
+        }
+      }
+      if (res.stderr.trim()) {
+        for (const line of res.stderr.trimEnd().split("\n")) {
+          this.writeln(`  ${RED}${line}${R}`);
+        }
+      }
+      if (res.exit !== 0) {
+        this.writeln(`  ${DARK_GRAY}exit ${res.exit}${R}`);
+      }
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  // ── /netscan ────────────────────────────────────────────────────────────
+  private async netscan(): Promise<void> {
+    const agentCfg = loadAgentConfig();
+    this.writeln(netscanHeader());
+    if (!agentCfg.enabled) {
+      this.writeln(`  ${DARK_GRAY}(channel quiet — showing the rehearsal feed only.)${R}`);
+    }
+    this.writeln("");
+
+    let tickCount = 0;
+    const agent = agentCfg.enabled ? getAgent(agentCfg) : null;
+
+    this.netscanTimer = window.setInterval(() => {
+      this.writeln(`  ${generatePacketLine()}`);
+      tickCount += 1;
+      // Interleave real data every ~15 ticks (~3 seconds at 200ms intervals)
+      if (agent && tickCount % 15 === 0) {
+        void agent.runShell("ss -tunp 2>/dev/null | tail -5").then((r) => {
+          if (this.netscanTimer === null) return;
+          if (r.ok && r.stdout.trim()) {
+            for (const line of r.stdout.trim().split("\n").slice(0, 3)) {
+              this.writeln(`  ${realFrameTag(line)}`);
+            }
+          }
+        });
+      }
+    }, 80 + Math.floor(Math.random() * 120));
+  }
+
+  private stopNetscan(): void {
+    if (this.netscanTimer === null) return;
+    window.clearInterval(this.netscanTimer);
+    this.netscanTimer = null;
+    this.writeln("");
+    this.writeln(`  ${GRAY}netscan stopped.${R}`);
+    this.writeln("");
+    this.writePrompt();
   }
 
   private unknown(cmd: string): void {

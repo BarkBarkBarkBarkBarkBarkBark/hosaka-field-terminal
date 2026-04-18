@@ -24,8 +24,10 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import signal
+import stat
 import subprocess  # noqa: F401  (kept for future sync paths)
 import sys
 import time
@@ -55,6 +57,10 @@ RATE_LIMIT_PER_MIN = int(os.environ.get("HOSAKA_RATE_PER_MIN", "30"))
 
 PICOCLAW_BIN = os.environ.get("PICOCLAW_BIN", "picoclaw")
 PICOCLAW_MODEL = os.environ.get("PICOCLAW_MODEL", "").strip()
+
+SEED_DIR = Path(os.environ.get("HOSAKA_SEED_DIR", "/app/seed"))
+SHELL_TIMEOUT_SECONDS = 10
+SHELL_MAX_OUTPUT = 16_384  # 16KB cap per shell command
 
 # Picoclaw response prefix — the original Hosaka adapter looks for this to
 # pull the agent's actual reply out of the decorated banner output.
@@ -229,6 +235,65 @@ async def _run_picoclaw(
     )
 
 
+def _seed_workspace(workspace: Path) -> None:
+    """Copy the curated seed tree into a fresh workspace."""
+    if not SEED_DIR.is_dir():
+        return
+    try:
+        shutil.copytree(str(SEED_DIR), str(workspace), dirs_exist_ok=True)
+        bin_dir = workspace / "bin"
+        if bin_dir.is_dir():
+            for f in bin_dir.iterdir():
+                if f.is_file():
+                    f.chmod(f.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP)
+    except Exception:
+        log.exception("failed to seed workspace")
+
+
+async def _run_shell(
+    cmd_str: str, session: Session
+) -> tuple[str, str, int]:
+    """Run a raw shell command (no LLM) inside the session workspace.
+
+    Returns (stdout, stderr, exit_code). Output capped at SHELL_MAX_OUTPUT.
+    Uses shlex.split — no shell=True, no globs. Defense-in-depth on top of
+    picoclaw's restrict_to_workspace and the per-session /workspaces/<sid>/
+    chroot-ish directory.
+    """
+    try:
+        tokens = shlex.split(cmd_str)
+    except ValueError:
+        return "", "bad quoting in command", 1
+    if not tokens:
+        return "", "empty command", 1
+
+    log.info("sid=%s shell: %s", session.sid, cmd_str[:200])
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *tokens,
+            cwd=str(session.workspace),
+            env=_subproc_env(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            preexec_fn=os.setsid if os.name == "posix" else None,
+        )
+    except FileNotFoundError:
+        return "", f"command not found: {tokens[0]}", 127
+
+    try:
+        stdout_b, stderr_b = await asyncio.wait_for(
+            proc.communicate(), timeout=SHELL_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        with contextlib_suppress():
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        return "", f"timed out after {SHELL_TIMEOUT_SECONDS}s", 124
+
+    stdout = stdout_b.decode("utf-8", errors="replace")[:SHELL_MAX_OUTPUT]
+    stderr = stderr_b.decode("utf-8", errors="replace")[:SHELL_MAX_OUTPUT]
+    return stdout, stderr, proc.returncode or 0
+
+
 class contextlib_suppress:
     """Tiny inline version so we don't need to import contextlib."""
     def __enter__(self) -> None:
@@ -334,6 +399,7 @@ async def ws_agent(ws: WebSocket) -> None:
     sid = uuid.uuid4().hex[:12]
     workspace = WORKSPACE_ROOT / sid
     workspace.mkdir(parents=True, exist_ok=True)
+    _seed_workspace(workspace)
     session = Session(sid, workspace, ip)
     _sessions[sid] = session
 
@@ -370,6 +436,27 @@ async def ws_agent(ws: WebSocket) -> None:
                 payload = json.loads(raw)
             except json.JSONDecodeError:
                 await ws.send_json({"type": "error", "error": "invalid json"})
+                continue
+
+            # Direct shell passthrough — bypasses picoclaw's LLM loop.
+            if payload.get("type") == "shell":
+                shell_cmd = (payload.get("cmd") or "").strip()
+                if not shell_cmd:
+                    await ws.send_json({"type": "error", "error": "empty command"})
+                    continue
+                if len(shell_cmd) > MSG_MAX_CHARS:
+                    await ws.send_json({"type": "error", "error": "command too long"})
+                    continue
+                if _rate_limited(session):
+                    await ws.send_json({"type": "error", "error": "rate limited"})
+                    continue
+                stdout, stderr, exit_code = await _run_shell(shell_cmd, session)
+                await ws.send_json({
+                    "type": "shell_reply",
+                    "stdout": stdout,
+                    "stderr": stderr,
+                    "exit": exit_code,
+                })
                 continue
 
             msg = (payload.get("message") or "").strip()

@@ -96,25 +96,34 @@ python -m hosaka       # runs the console TUI
 
 ## What you get in the browser
 
+Four tabs: **Terminal**, **Messages**, **Reading**, **Open Loops**.
+
 - **Terminal** — `xterm.js` + a scripted Hosaka shell. Try `/commands`,
-  `/plant`, `/orb`, `/lore`, `/status`, `/signal`.
+  `/plant`, `/orb`, `/lore`, `/status`, `/signal`, `/netscan`.
 - **Picoclaw agent — the heartbeat.** Free text in the terminal opens a
   websocket to a Fly.io-hosted picoclaw process with a real sandboxed
-  filesystem and shell. The channel is gated by a magic word — say
-  **`neuro`** in the terminal to open it.
-- **`/ask` command** — a one-shot Gemini prompt routed through the
-  Vercel `/api/gemini` edge function. Useful for quick questions
-  without spinning up an agent session.
-- **Video** — pick a local file or paste a direct-URL video.
+  filesystem and shell. The channel is gated by a magic word. Each
+  session's workspace comes pre-seeded with discoverable easter eggs:
+  notes, lore relics, hidden haiku, and tiny shell scripts in `bin/`.
+- **`!cmd` shell passthrough** — type `!ls`, `!cat README.md`, etc. to
+  run real commands in the picoclaw sandbox without the LLM loop.
+  Fast, deterministic, sandboxed by `shlex.split` + workspace chroot.
+- **`/netscan`** — hybrid theatrical + real network scanner. Streams
+  fake tcpdump-style traffic; when the channel is open, interleaves
+  real `ss` output tagged `[REAL]`.
+- **Reading** — a markdown library of hosaka lore vignettes rendered
+  beautifully on screen. `/read` lists them; `/read <slug>` opens one.
+  Teaser: `/read order` hints at the kindle relay.
+- **Open Loops** — a simple todo panel stored in `localStorage`. Add
+  from the terminal with `/todo add remember the signal`.
 - **Messages** — offline orb chat or a Discord/Slack/custom webhook.
-- **Lore** — breadcrumbs from before the cascade.
 
-Touch, mouse, and keyboard are all first-class. Tabs are 44px min. The
-terminal gets focus when you tap it. On phones the banner switches to a
-compact layout.
+Touch, mouse, and keyboard are all first-class. The terminal gets focus
+when you tap it. On phones the banner collapses and chrome shrinks.
 
 All errors are presented as branded in-character copy — the user never
-sees raw stack traces, HTTP codes, or API key names.
+sees raw stack traces, HTTP codes, or API key names. Visual style is
+retro terminal: sharp corners, CRT scanlines, phosphor glow on amber.
 
 ---
 

@@ -1,0 +1,14 @@
+#!/bin/sh
+# the plant persists.
+cat <<'EOF'
+   _
+  ( )
+  \|/
+   |
+   |
+ __|__
+[_____]
+
+status: stable
+the plant endures. tend it with attention.
+EOF

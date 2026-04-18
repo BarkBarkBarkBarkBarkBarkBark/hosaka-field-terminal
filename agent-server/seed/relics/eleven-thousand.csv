@@ -1,0 +1,12 @@
+node_id,frequency_band,last_signal
+1,sub-audible,pre-cascade
+7,14khz,pre-cascade
+42,41khz,pre-cascade
+99,harmonic,day 11
+100,sub-audible,day 9
+203,14khz,day 7
+412,harmonic,active
+500,sub-audible,unknown
+777,41khz,day 4
+1000,14khz,day 2
+11000,sub-audible,day 1

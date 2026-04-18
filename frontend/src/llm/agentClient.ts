@@ -64,11 +64,16 @@ export type AgentHello = {
   ttl_seconds: number;
 };
 
+export type ShellResult =
+  | { ok: true; stdout: string; stderr: string; exit: number }
+  | { ok: false; code: AgentErrorCode };
+
 export type AgentEvent =
   | AgentHello
   | { type: "thinking" }
   | { type: "ping" }
   | { type: "reply"; text?: string; stdout: string; stderr: string }
+  | { type: "shell_reply"; stdout: string; stderr: string; exit: number }
   | { type: "error"; error: string };
 
 export type AgentErrorCode =
@@ -103,6 +108,10 @@ export class AgentClient {
   private hello: AgentHello | null = null;
   private inflight: {
     resolve: (r: AgentResult) => void;
+    timer: number;
+  } | null = null;
+  private shellInflight: {
+    resolve: (r: ShellResult) => void;
     timer: number;
   } | null = null;
 
@@ -211,6 +220,20 @@ export class AgentClient {
           return;
         }
 
+        if (data.type === "shell_reply") {
+          if (this.shellInflight) {
+            window.clearTimeout(this.shellInflight.timer);
+            this.shellInflight.resolve({
+              ok: true,
+              stdout: (data as AgentEvent & { type: "shell_reply" }).stdout,
+              stderr: (data as AgentEvent & { type: "shell_reply" }).stderr,
+              exit: (data as AgentEvent & { type: "shell_reply" }).exit,
+            });
+            this.shellInflight = null;
+          }
+          return;
+        }
+
         // ping / thinking → no-op (server is just keeping the channel warm)
       });
 
@@ -226,6 +249,11 @@ export class AgentClient {
           window.clearTimeout(this.inflight.timer);
           this.inflight.resolve({ ok: false, code: "dropped" });
           this.inflight = null;
+        }
+        if (this.shellInflight) {
+          window.clearTimeout(this.shellInflight.timer);
+          this.shellInflight.resolve({ ok: false, code: "dropped" });
+          this.shellInflight = null;
         }
         this.hello = null;
         this.ws = null;
@@ -259,6 +287,28 @@ export class AgentClient {
     });
   }
 
+  async runShell(cmd: string): Promise<ShellResult> {
+    if (this.shellInflight) {
+      return { ok: false, code: "busy" };
+    }
+    const openErr = await this.ensureOpen();
+    if (openErr) return { ok: false, code: openErr };
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      return { ok: false, code: "unreachable" };
+    }
+    return new Promise<ShellResult>((resolve) => {
+      const timer = window.setTimeout(() => {
+        if (this.shellInflight) {
+          this.shellInflight = null;
+          resolve({ ok: false, code: "timeout" });
+        }
+      }, 15_000);
+      this.shellInflight = { resolve, timer };
+      ws.send(JSON.stringify({ type: "shell", cmd }));
+    });
+  }
+
   close(): void {
     if (this.ws) {
       try {
@@ -273,6 +323,11 @@ export class AgentClient {
       window.clearTimeout(this.inflight.timer);
       this.inflight.resolve({ ok: false, code: "dropped" });
       this.inflight = null;
+    }
+    if (this.shellInflight) {
+      window.clearTimeout(this.shellInflight.timer);
+      this.shellInflight.resolve({ ok: false, code: "dropped" });
+      this.shellInflight = null;
     }
   }
 }

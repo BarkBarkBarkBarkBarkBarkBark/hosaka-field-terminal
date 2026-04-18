@@ -1,0 +1,28 @@
+#!/bin/sh
+# the orb sees you.
+set -e
+ORBS='
+   _____
+  /     \
+ | ◉   ◉ |
+  \_____/
+
+   ░░░░░
+  ░◆◇◆◇◆░
+   ░░░░░
+
+    ○
+  ◯ ◉ ◯
+    ○
+
+   .·✦·.
+   ( * )
+   ·✦·
+'
+echo "$ORBS" | awk 'BEGIN{srand()} /^$/{b++} b>=1{lines[NR]=$0} END{
+  n=int(rand()*b)+1; c=0; for(i=1;i<=NR;i++) if(lines[i]==""){c++; if(c==n){for(j=i+1;j<=NR&&lines[j]!="";j++) print lines[j]; exit}}
+}' 2>/dev/null || echo "   .·✦·.
+   ( * )
+   ·✦·"
+echo ""
+echo "the orb acknowledges your presence."

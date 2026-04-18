@@ -54,7 +54,9 @@ COPY agent-server/requirements.txt ./
 RUN pip install -r requirements.txt
 
 COPY agent-server/server.py agent-server/start.sh ./
+COPY agent-server/seed ./seed/
 RUN chmod +x start.sh \
+ && chmod -R +x seed/bin/ 2>/dev/null || true \
  && chown -R hosaka:hosaka /app
 
 USER hosaka

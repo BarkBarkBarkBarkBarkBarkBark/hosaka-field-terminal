@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for hosaka-field-terminal-77b790f on 2026-04-18T06:44:41Z
+# fly.toml app configuration file generated for hosaka-field-terminal-alpha on 2026-04-18T06:52:48Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'hosaka-field-terminal-77b790f'
+app = 'hosaka-field-terminal-alpha'
 primary_region = 'ams'
 
 [build]

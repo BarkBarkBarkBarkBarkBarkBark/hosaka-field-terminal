@@ -13,13 +13,16 @@ Start with AGENTS.md. It is the highest-signal file in the repo.
 - [Architecture](./architecture.md): layout and rationale.
 - [Local development](./local-development.md): dev loop.
 - [Deployment](./deployment.md): GH Pages / Vercel / Cloudflare / custom domain.
+- [LLM](./llm.md): Gemini BYOK + proxy (api/gemini.ts) setup + env vars.
 - [Appliance mode](./appliance-mode.md): kiosk on Raspberry Pi.
 - [Context seed](./context.seed.json): structured facts, JSON.
 
 ## Source of truth
 - [frontend/src/shell/HosakaShell.ts](../frontend/src/shell/HosakaShell.ts): simulated terminal shell.
 - [frontend/src/shell/commands.ts](../frontend/src/shell/commands.ts): command taxonomy.
+- [frontend/src/llm/gemini.ts](../frontend/src/llm/gemini.ts): Gemini client (BYOK + proxy).
 - [frontend/src/App.tsx](../frontend/src/App.tsx): top-level panel registry.
+- [api/gemini.ts](../api/gemini.ts): Vercel Edge Function proxy; reads GEMINI_API_KEY.
 - [Hosaka_Field-Terminal/hosaka/main_console.py](../Hosaka_Field-Terminal/hosaka/main_console.py): original TUI; canonical command list.
 
 ## Optional

@@ -589,6 +589,141 @@ html, body, #root {
   line-height: 1.7;
 }
 
+/* ── icon button / drawer ────────────────────────────────── */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--amber);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--bg-3);
+  border-color: var(--amber-dim);
+}
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(460px, 100vw);
+  height: 100dvh;
+  background: var(--bg-1);
+  border-left: 1px solid var(--border-strong);
+  box-shadow: -8px 0 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  animation: drawer-in 0.2s ease-out;
+}
+
+@keyframes drawer-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-head h2 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.drawer-section {
+  padding: 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawer-section h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.drawer-field {
+  display: grid;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.drawer-field input,
+.drawer-field select {
+  padding: 10px 12px;
+  min-height: 42px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.drawer-field a {
+  color: var(--amber);
+  text-decoration: none;
+}
+.drawer-field a:hover { text-decoration: underline; }
+
+.drawer-key {
+  display: flex;
+  gap: 8px;
+}
+.drawer-key input { flex: 1; }
+
+.drawer-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.drawer-flash {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--green);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.drawer-flash.on { opacity: 1; }
+
+.drawer-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 /* ── responsive ──────────────────────────────────────────── */
 
 @media (max-width: 600px) {

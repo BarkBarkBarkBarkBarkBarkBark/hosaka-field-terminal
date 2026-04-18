@@ -5,6 +5,7 @@ import { MessagesPanel } from "./panels/MessagesPanel";
 import { LorePanel } from "./panels/LorePanel";
 import { PlantBadge } from "./components/PlantBadge";
 import { SignalBadge } from "./components/SignalBadge";
+import { SettingsDrawer } from "./components/SettingsDrawer";
 
 export type PanelId = "terminal" | "video" | "messages" | "lore";
 
@@ -18,10 +19,17 @@ const PANELS: { id: PanelId; label: string; glyph: string }[] = [
 export function App() {
   const [active, setActive] = useState<PanelId>("terminal");
   const [bootMessage, setBootMessage] = useState("...waking the orb...");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setBootMessage("signal steady"), 900);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setSettingsOpen(true);
+    window.addEventListener("hosaka:open-settings", handler);
+    return () => window.removeEventListener("hosaka:open-settings", handler);
   }, []);
 
   return (
@@ -34,6 +42,14 @@ export function App() {
         <div className="hosaka-topbar-right">
           <SignalBadge label={bootMessage} />
           <PlantBadge />
+          <button
+            className="icon-btn"
+            aria-label="settings"
+            title="settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            ⚙
+          </button>
         </div>
       </header>
 
@@ -66,6 +82,8 @@ export function App() {
           <LorePanel />
         </div>
       </main>
+
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <footer className="hosaka-footer">
         <span className="hosaka-footer-dim">there is no wrong way</span>

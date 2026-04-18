@@ -33,9 +33,14 @@ code. The appliance is the source of truth for Hosaka's identity.
 | `frontend/`                           | Vite + React + TS web desktop            |
 | `frontend/src/panels/`                | One file per top-level panel             |
 | `frontend/src/shell/`                 | Simulated shell logic & content          |
-| `frontend/src/components/`            | Small shared UI atoms                    |
+| `frontend/src/llm/gemini.ts`          | Gemini client (BYOK-first, proxy fallback) |
+| `frontend/src/components/`            | Small shared UI atoms + SettingsDrawer   |
 | `frontend/src/styles/app.css`         | Single stylesheet, CSS variables         |
-| `frontend/public/CNAME`               | Custom-domain stub for GH Pages          |
+| `frontend/public/CNAME.example`       | Custom-domain stub (copy to CNAME)       |
+| `api/gemini.ts`                       | Vercel Edge Function; uses `GEMINI_API_KEY` env var |
+| `frontend/src/llm/tools.ts`           | Watertight client-side tools Gemini can call |
+| `frontend/src/llm/agentClient.ts`     | Websocket client for the picoclaw backend |
+| `agent-server/`                       | Optional Fly.io service: FastAPI + picoclaw |
 | `Hosaka_Field-Terminal/`              | Original Python TUI (preserved)          |
 | `docs/`                               | Human docs + machine-readable seeds      |
 | `.github/workflows/`                  | GH Pages deploy + typecheck CI           |
@@ -50,7 +55,10 @@ code. The appliance is the source of truth for Hosaka's identity.
 - **CSS**: one global stylesheet, CSS vars for theme. No CSS-in-JS.
 - **Commits / PRs**: don't invent GitHub identities. Ask before
   committing if git state is unclear.
-- **Secrets**: never bake any in. Webhook URLs live in `localStorage`.
+- **Secrets**: never bake any in. Webhook URLs and user-supplied Gemini
+  keys live in `localStorage`. The shared Gemini key lives only in
+  Vercel's env vars and is read by `api/gemini.ts`. Never expose it
+  via `VITE_*` — Vite bakes those into the JS bundle.
 
 ## Common commands
 
@@ -87,6 +95,10 @@ python -m hosaka
 - Add shell commands: edit
   [`frontend/src/shell/commands.ts`](./frontend/src/shell/commands.ts)
   and add a case in `HosakaShell.dispatch`.
+- Extend the LLM: edit
+  [`frontend/src/llm/gemini.ts`](./frontend/src/llm/gemini.ts) (client)
+  and/or [`api/gemini.ts`](./api/gemini.ts) (proxy). Both reference
+  `GEMINI_MODELS` — keep the lists in sync.
 - Theme tweaks: edit `:root` variables in
   [`frontend/src/styles/app.css`](./frontend/src/styles/app.css).
 

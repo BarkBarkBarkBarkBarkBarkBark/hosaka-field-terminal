@@ -21,3 +21,6 @@ jobs:
       - name: Typecheck & build
         working-directory: frontend
         run: npm run build
+
+      - name: Typecheck api/ (edge function)
+        run: npx -y -p typescript@5.6 tsc -p api/tsconfig.json

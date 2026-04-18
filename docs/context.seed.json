@@ -45,11 +45,28 @@
     "css": "global-stylesheet-with-vars",
     "commits": "ask-before-committing"
   },
+  "llm": {
+    "provider": "google-gemini",
+    "modes": ["byok", "proxy"],
+    "default_model": "gemini-2.5-flash-lite",
+    "allowed_models": [
+      "gemini-2.5-flash-lite",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-lite"
+    ],
+    "env_vars": {
+      "GEMINI_API_KEY": "required on the server for proxy mode",
+      "GEMINI_ALLOWED_ORIGIN": "optional, comma-separated extra CORS origins"
+    },
+    "client": "frontend/src/llm/gemini.ts",
+    "proxy": "api/gemini.ts (Vercel Edge Function)"
+  },
   "non_goals": [
     "embed third-party sites via iframe in hosted mode",
     "rewrite Python TUI",
-    "add a server to the hosted build",
-    "ship secrets or bake webhook URLs"
+    "add a server to the hosted build (the edge function is intentionally minimal)",
+    "ship secrets, bake webhook URLs, or use VITE_ vars for secrets"
   ],
   "extension_points": {
     "new_panel": "add file to frontend/src/panels/, register in App.tsx PANELS array and render block",

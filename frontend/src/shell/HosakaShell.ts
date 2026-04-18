@@ -1,6 +1,20 @@
 import type { Terminal } from "@xterm/xterm";
 import { BANNER, PLANT_STATES, LORE_FRAGMENTS, ORBS } from "./content";
 import { COMMANDS, type CommandEntry } from "./commands";
+import {
+  askGemini,
+  GEMINI_MODELS,
+  loadConfig as loadLlmConfig,
+  saveConfig as saveLlmConfig,
+  type GeminiModel,
+  type LlmMessage,
+} from "../llm/gemini";
+import {
+  getAgent,
+  loadAgentConfig,
+  saveAgentConfig,
+  type AgentConfig,
+} from "../llm/agentClient";
 
 // ANSI helpers
 const ESC = "\x1b[";
@@ -38,6 +52,8 @@ export class HosakaShell {
   private history: string[] = [];
   private histIdx = 0;
   private plantTicks = 0;
+  private llmHistory: LlmMessage[] = [];
+  private busy = false;
 
   constructor(private readonly term: Terminal) {}
 
@@ -66,10 +82,10 @@ export class HosakaShell {
       `  ${CYAN}Field Terminal Online.${R}  ${GRAY}Signal steady.${R}  ${AMBER_DIM}hosted edition${R}`,
     );
     this.writeln(
-      `  ${DARK_GRAY}/commands to explore  ·  /help to start  ·  just type to babble${R}`,
+      `  ${DARK_GRAY}/commands to explore  ·  /help to start  ·  /ask the orb anything${R}`,
     );
     this.writeln(
-      `  ${DARK_GRAY}this is a simulated shell — the appliance version runs the real thing${R}`,
+      `  ${DARK_GRAY}llm wiring: ${CYAN}/settings${R}${DARK_GRAY} → paste a gemini key, or rely on the proxy${R}`,
     );
     this.writeln("");
   }
@@ -186,12 +202,19 @@ export class HosakaShell {
       this.history.push(raw);
       this.histIdx = this.history.length;
       this.plantTicks += 1;
-      this.dispatch(raw);
+      void this.dispatch(raw);
+      return; // dispatch handles re-prompting (esp. for async LLM calls)
     }
     this.writePrompt();
   }
 
-  private dispatch(raw: string): void {
+  private async dispatch(raw: string): Promise<void> {
+    if (this.busy) {
+      this.writeln(`  ${GRAY}...the orb is still thinking. patience.${R}`);
+      this.writePrompt();
+      return;
+    }
+
     if (raw.startsWith("!")) {
       this.writeln(
         `  ${AMBER}[sandbox]${R} shell passthrough is disabled in the hosted build.`,
@@ -199,17 +222,18 @@ export class HosakaShell {
       this.writeln(
         `  ${GRAY}install the appliance to run real shells. see /docs.${R}`,
       );
+      this.writePrompt();
       return;
     }
 
     if (!raw.startsWith("/")) {
-      this.writeln(
-        `  ${VIOLET}//${R} the orb received your transmission:`,
-      );
-      this.writeln(`     ${GRAY}"${raw}"${R}`);
-      this.writeln(
-        `  ${DARK_GRAY}in appliance mode this would reach Picoclaw. here, silence replies.${R}`,
-      );
+      const agentCfg = loadAgentConfig();
+      if (agentCfg.enabled) {
+        await this.askAgent(raw, agentCfg);
+      } else {
+        await this.askLlm(raw);
+      }
+      this.writePrompt();
       return;
     }
 
@@ -217,45 +241,255 @@ export class HosakaShell {
     const arg = rest.join(" ");
     switch (cmd) {
       case "/help":
-        return this.help();
+        this.help();
+        break;
       case "/commands":
-        return this.listCommands();
+        this.listCommands();
+        break;
       case "/about":
-        return this.about();
+        this.about();
+        break;
       case "/status":
-        return this.status();
+        this.status();
+        break;
       case "/plant":
-        return this.writeln(this.renderPlant());
+        this.writeln(this.renderPlant());
+        break;
       case "/orb":
-        return this.orb();
+        this.orb();
+        break;
       case "/lore":
-        return this.lore();
+        this.lore();
+        break;
       case "/signal":
         this.writeln(`  ${CYAN}Signal steady.${R} Persistence confirmed.`);
         this.writeln(`  ${GRAY}... but steady is relative, isn't it?${R}`);
-        return;
+        break;
       case "/clear":
         this.term.clear();
-        return;
+        break;
       case "/echo":
-        return this.writeln(`  ${arg}`);
+        this.writeln(`  ${arg}`);
+        break;
       case "/docs":
-        return this.writeln(
+        this.writeln(
           `  ${AMBER}https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka${R}`,
         );
+        break;
       case "/video":
       case "/messages":
       case "/terminal":
       case "/lorepanel":
-        return this.writeln(
+        this.writeln(
           `  ${GRAY}switch tabs at the top to open the ${cmd.slice(1)} panel.${R}`,
         );
+        break;
       case "/exit":
         this.writeln(`  ${GRAY}there's nowhere to exit to. you're already here.${R}`);
-        return;
+        break;
+      case "/ask":
+      case "/chat":
+        if (arg) {
+          await this.askLlm(arg);
+        } else {
+          this.writeln(`  ${GRAY}usage: /ask <your question>${R}`);
+        }
+        break;
+      case "/model":
+        this.handleModel(arg);
+        break;
+      case "/agent":
+        await this.handleAgent(arg);
+        break;
+      case "/settings":
+        this.openSettings();
+        break;
+      case "/reset":
+        this.llmHistory = [];
+        this.writeln(`  ${GRAY}conversation cleared. fresh channel.${R}`);
+        break;
       default:
-        return this.unknown(cmd);
+        this.unknown(cmd);
     }
+    this.writePrompt();
+  }
+
+  private async askLlm(prompt: string): Promise<void> {
+    const cfg = loadLlmConfig();
+    const hasKey = !!cfg.apiKey;
+    const willUse =
+      cfg.mode === "proxy" ? "proxy" : hasKey ? "byok" : "proxy";
+
+    this.writeln(
+      `  ${DARK_GRAY}// channel open → ${willUse} · ${cfg.model}${R}`,
+    );
+    this.busy = true;
+    try {
+      const res = await askGemini(prompt, this.llmHistory, cfg);
+      if (!res.ok) {
+        this.writeln(`  ${RED}✗${R} ${res.error}`);
+        if (res.status === 503 || /proxy is not configured/i.test(res.error)) {
+          this.writeln(
+            `  ${GRAY}no byok key and no proxy available. open ${CYAN}/settings${R}${GRAY} to add one.${R}`,
+          );
+        } else if (res.status === 429) {
+          this.writeln(
+            `  ${GRAY}rate limit. breathe. try again in a moment.${R}`,
+          );
+        }
+        return;
+      }
+      this.llmHistory.push({ role: "user", text: prompt });
+      this.llmHistory.push({ role: "assistant", text: res.text });
+      if (this.llmHistory.length > 16) {
+        this.llmHistory = this.llmHistory.slice(-16);
+      }
+      this.writeln("");
+      for (const line of res.text.split("\n")) {
+        this.writeln(`  ${line}`);
+      }
+      this.writeln("");
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private handleModel(arg: string): void {
+    const cfg = loadLlmConfig();
+    if (!arg) {
+      this.writeln(`  ${GRAY}current model:${R} ${AMBER}${cfg.model}${R}`);
+      this.writeln(`  ${GRAY}available:${R}`);
+      for (const m of GEMINI_MODELS) this.writeln(`    ${CYAN}${m}${R}`);
+      this.writeln(
+        `  ${GRAY}usage: /model <name>  ·  try ${CYAN}/settings${R}${GRAY} for key + mode.${R}`,
+      );
+      return;
+    }
+    if (!(GEMINI_MODELS as readonly string[]).includes(arg)) {
+      this.writeln(`  ${RED}unknown model:${R} ${arg}`);
+      this.writeln(`  ${GRAY}try one of:${R} ${GEMINI_MODELS.join(", ")}`);
+      return;
+    }
+    saveLlmConfig({ ...cfg, model: arg as GeminiModel });
+    this.writeln(`  ${GRAY}model set →${R} ${AMBER}${arg}${R}`);
+  }
+
+  private openSettings(): void {
+    try {
+      window.dispatchEvent(new CustomEvent("hosaka:open-settings"));
+      this.writeln(`  ${GRAY}settings drawer opened. tap the gear next time.${R}`);
+    } catch {
+      this.writeln(`  ${RED}could not open settings (non-browser env?)${R}`);
+    }
+  }
+
+  private async askAgent(prompt: string, cfg: AgentConfig): Promise<void> {
+    this.writeln(
+      `  ${DARK_GRAY}// agent channel → ${cfg.url.replace(/^wss?:\/\//, "")}${R}`,
+    );
+    this.busy = true;
+    try {
+      const agent = getAgent(cfg);
+      const res = await agent.send(prompt);
+      if (!res.ok) {
+        this.writeln(`  ${RED}✗${R} ${res.error}`);
+        if (/unauthor|url|passphrase|cors/i.test(res.error)) {
+          this.writeln(
+            `  ${GRAY}check ${CYAN}/settings${R}${GRAY} → agent backend.${R}`,
+          );
+        }
+        return;
+      }
+      this.writeln(`  ${DARK_GRAY}sid=${res.sid} · model=${res.model ?? "?"}${R}`);
+      this.writeln("");
+      for (const line of res.text.split("\n")) {
+        this.writeln(`  ${line}`);
+      }
+      this.writeln("");
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async handleAgent(arg: string): Promise<void> {
+    const cfg = loadAgentConfig();
+    const parts = arg.trim().split(/\s+/).filter(Boolean);
+    const sub = parts[0] ?? "";
+
+    if (!sub || sub === "status") {
+      this.writeln(`  ${GRAY}agent mode:${R}    ${cfg.enabled ? AMBER + "on" : GRAY + "off"}${R}`);
+      this.writeln(`  ${GRAY}url:${R}           ${cfg.url || "(unset)"}`);
+      this.writeln(
+        `  ${GRAY}passphrase:${R}    ${cfg.passphrase ? "•".repeat(Math.min(cfg.passphrase.length, 10)) : "(unset)"}`,
+      );
+      this.writeln("");
+      this.writeln(
+        `  ${GRAY}usage:${R} /agent on | off | url <wss://…> | passphrase <phrase> | test`,
+      );
+      return;
+    }
+
+    if (sub === "on") {
+      if (!cfg.url || !cfg.passphrase) {
+        this.writeln(
+          `  ${RED}can't enable:${R} need both url and passphrase first.`,
+        );
+        return;
+      }
+      saveAgentConfig({ ...cfg, enabled: true });
+      this.writeln(`  ${AMBER}agent mode on.${R} ${GRAY}typing now goes to picoclaw.${R}`);
+      return;
+    }
+    if (sub === "off") {
+      saveAgentConfig({ ...cfg, enabled: false });
+      this.writeln(`  ${GRAY}agent mode off. typing now goes to gemini.${R}`);
+      return;
+    }
+    if (sub === "url") {
+      const value = parts.slice(1).join(" ").trim();
+      if (!value) {
+        this.writeln(`  ${GRAY}usage: /agent url wss://host/ws/agent${R}`);
+        return;
+      }
+      if (!/^wss?:\/\//i.test(value)) {
+        this.writeln(`  ${RED}url must start with ws:// or wss://${R}`);
+        return;
+      }
+      saveAgentConfig({ ...cfg, url: value });
+      this.writeln(`  ${GRAY}agent url saved.${R}`);
+      return;
+    }
+    if (sub === "passphrase") {
+      const value = parts.slice(1).join(" ").trim();
+      if (!value) {
+        this.writeln(`  ${GRAY}usage: /agent passphrase <phrase>${R}`);
+        return;
+      }
+      saveAgentConfig({ ...cfg, passphrase: value });
+      this.writeln(`  ${GRAY}passphrase saved (browser-only).${R}`);
+      return;
+    }
+    if (sub === "test") {
+      if (!cfg.url || !cfg.passphrase) {
+        this.writeln(`  ${RED}set url + passphrase first.${R}`);
+        return;
+      }
+      this.writeln(`  ${DARK_GRAY}pinging agent…${R}`);
+      this.busy = true;
+      try {
+        const agent = getAgent(cfg);
+        const res = await agent.send("say 'signal steady' and nothing else.");
+        if (res.ok) {
+          this.writeln(`  ${GRAY}✓ reply:${R} ${res.text.split("\n")[0]}`);
+        } else {
+          this.writeln(`  ${RED}✗${R} ${res.error}`);
+        }
+      } finally {
+        this.busy = false;
+      }
+      return;
+    }
+    this.writeln(`  ${RED}unknown /agent subcommand:${R} ${sub}`);
   }
 
   private help(): void {

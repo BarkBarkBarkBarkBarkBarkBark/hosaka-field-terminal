@@ -70,12 +70,17 @@ python -m hosaka       # runs the console TUI
 
 - **Terminal** — `xterm.js` + a scripted Hosaka shell. Try `/commands`,
   `/plant`, `/orb`, `/lore`, `/status`, `/signal`.
-- **Video** — pick a local file or paste a direct-URL video. No scraper,
-  no proxy, no drama.
-- **Messages** — a panel that talks to the orb offline, or to any
-  Discord/Slack/custom JSON webhook you configure (stored in
-  `localStorage`, never shipped).
-- **Lore** — occasional breadcrumbs from before the cascade.
+- **Gemini LLM** — bring your own API key (stored in `localStorage`) or
+  use the optional Vercel Edge Function proxy. Try `/ask`, `/chat`,
+  `/model`. Gemini can also call a **watertight set of tools**
+  (time/math/lore/memory — see [`docs/tools-sandbox.md`](./docs/tools-sandbox.md)).
+- **Picoclaw agent (optional)** — a passphrase-gated websocket into a
+  Fly.io-hosted picoclaw binary with a real sandboxed filesystem and
+  shell. `/agent on` routes input there instead. See
+  [`docs/agent-backend.md`](./docs/agent-backend.md).
+- **Video** — pick a local file or paste a direct-URL video.
+- **Messages** — offline orb chat or a Discord/Slack/custom webhook.
+- **Lore** — breadcrumbs from before the cascade.
 
 Touch, mouse, and keyboard are all first-class. Tabs are 44px min. The
 terminal gets focus when you tap it.
@@ -106,6 +111,9 @@ Human-readable:
 
 - [`docs/architecture.md`](./docs/architecture.md) — what lives where, and why.
 - [`docs/deployment.md`](./docs/deployment.md) — GH Pages, Vercel, Cloudflare, custom domain.
+- [`docs/llm.md`](./docs/llm.md) — Gemini (BYOK + proxy), env vars, free-tier notes.
+- [`docs/tools-sandbox.md`](./docs/tools-sandbox.md) — the watertight client-side tool set.
+- [`docs/agent-backend.md`](./docs/agent-backend.md) — optional picoclaw on Fly.io, threat model, hardening checklist.
 - [`docs/appliance-mode.md`](./docs/appliance-mode.md) — running on a Pi with a touchscreen.
 - [`docs/local-development.md`](./docs/local-development.md) — dev loop, tooling, conventions.
 
@@ -126,11 +134,22 @@ Machine-readable (seed context for LLM agents):
 │   │   ├── App.tsx
 │   │   ├── panels/           # Terminal, Video, Messages, Lore
 │   │   ├── shell/            # simulated Hosaka shell for xterm.js
+│   │   ├── llm/              # Gemini client + tools + agent websocket client
+│   │   ├── components/       # badges, settings drawer
 │   │   └── styles/
-│   ├── public/CNAME          # custom-domain stub
 │   └── vite.config.ts
+├── api/                      # Vercel Edge Functions
+│   └── gemini.ts             # Gemini proxy, uses GEMINI_API_KEY env var
+├── agent-server/             # Optional Fly.io backend for picoclaw
+│   ├── server.py             # FastAPI + websocket + auth + sandbox
+│   ├── start.sh              # writes picoclaw config from env at boot
+│   ├── requirements.txt
+│   └── README.md
+├── Dockerfile                # Fly.io build (agent-server sources)
+├── fly.toml                  # Fly.io config (root-level; fly finds it here)
+├── .dockerignore             # keeps the Fly build context tiny
 ├── Hosaka_Field-Terminal/    # original Python TUI, preserved verbatim
-├── docs/                     # architecture / deployment / appliance / seed context
+├── docs/                     # architecture / deployment / llm / agent-backend / etc.
 ├── .github/workflows/        # GitHub Pages + typecheck CI
 ├── vercel.json
 ├── instructions.md           # original mission brief

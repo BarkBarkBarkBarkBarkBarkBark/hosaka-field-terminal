@@ -1,0 +1,20 @@
+# Root .dockerignore for the Fly.io/agent-server build.
+#
+# The Dockerfile only needs three files from agent-server/.  Everything
+# else in the repo is excluded to keep the build context small (Fly
+# uploads the entire context when building remotely).
+
+# Default: exclude everything.
+*
+
+# Allow only the agent-server sources we actually COPY.
+!agent-server/requirements.txt
+!agent-server/server.py
+!agent-server/start.sh
+
+# Anti-patterns that might sneak through if someone edits this file later:
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*

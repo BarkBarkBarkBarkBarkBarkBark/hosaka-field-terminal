@@ -22,7 +22,6 @@ type Props = {
 export function SettingsDrawer({ open, onClose }: Props) {
   const [cfg, setCfg] = useState<LlmConfig>(loadConfig);
   const [agentCfg, setAgentCfg] = useState<AgentConfig>(loadAgentConfig);
-  const [revealed, setRevealed] = useState(false);
   const [agentPassRevealed, setAgentPassRevealed] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -70,33 +69,17 @@ export function SettingsDrawer({ open, onClose }: Props) {
         </header>
 
         <section className="drawer-section">
-          <h3>LLM — Gemini</h3>
+          <h3>Channel</h3>
           <p className="dim small">
-            the app can talk to google's gemini. choose byok (your own key,
-            runs in this browser only) or proxy (uses whatever the server has
-            configured). keys are stored in <code>localStorage</code> —
-            nothing leaves this browser except your prompts.
+            picoclaw is the default voice of hosaka — an agentic framework
+            running on a tiny fly.io box, wired to gemini by a server-side key
+            you never see. free text in the terminal goes here. the{" "}
+            <code>/ask</code> command uses the gemini proxy directly for a
+            plain one-shot question.
           </p>
 
           <label className="drawer-field">
-            <span>mode</span>
-            <select
-              value={cfg.mode}
-              onChange={(e) =>
-                commit({
-                  ...cfg,
-                  mode: e.target.value as LlmConfig["mode"],
-                })
-              }
-            >
-              <option value="auto">auto (byok if set, else proxy)</option>
-              <option value="byok">byok — my key only</option>
-              <option value="proxy">proxy — server key only</option>
-            </select>
-          </label>
-
-          <label className="drawer-field">
-            <span>model</span>
+            <span>gemini model (for /ask only)</span>
             <select
               value={cfg.model}
               onChange={(e) =>
@@ -108,49 +91,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
                   {m}
                 </option>
               ))}
-            </select>
-          </label>
-
-          <label className="drawer-field">
-            <span>
-              your gemini api key{" "}
-              <a
-                href="https://aistudio.google.com/apikey"
-                target="_blank"
-                rel="noreferrer"
-              >
-                (get one)
-              </a>
-            </span>
-            <div className="drawer-key">
-              <input
-                type={revealed ? "text" : "password"}
-                placeholder="AIza..."
-                value={cfg.apiKey}
-                onChange={(e) => commit({ ...cfg, apiKey: e.target.value.trim() })}
-                spellCheck={false}
-                autoComplete="off"
-              />
-              <button
-                className="btn btn-ghost"
-                onClick={() => setRevealed((r) => !r)}
-                type="button"
-              >
-                {revealed ? "hide" : "show"}
-              </button>
-            </div>
-          </label>
-
-          <label className="drawer-field">
-            <span>tool use (time, math, lore, memory — all browser-local)</span>
-            <select
-              value={cfg.toolsEnabled ? "on" : "off"}
-              onChange={(e) =>
-                commit({ ...cfg, toolsEnabled: e.target.value === "on" })
-              }
-            >
-              <option value="on">on (let gemini call safe tools)</option>
-              <option value="off">off (plain chat)</option>
             </select>
           </label>
 
@@ -166,11 +106,11 @@ export function SettingsDrawer({ open, onClose }: Props) {
         </section>
 
         <section className="drawer-section">
-          <h3>Agent backend — picoclaw (optional)</h3>
+          <h3>Agent backend — picoclaw</h3>
           <p className="dim small">
-            route input to a fly.io-hosted picoclaw agent instead of gemini.
-            gated by a shared passphrase. agent has real filesystem + shell;
-            only enable if you trust the operator of the backend.
+            advanced: override the default relay url or passphrase. most
+            visitors should leave these alone — say <code>neuro</code> in the
+            terminal and the channel opens on its own.
           </p>
 
           <label className="drawer-field">
@@ -209,7 +149,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
           </label>
 
           <label className="drawer-field">
-            <span>mode</span>
+            <span>channel</span>
             <select
               value={agentCfg.enabled ? "on" : "off"}
               onChange={(e) =>
@@ -220,8 +160,8 @@ export function SettingsDrawer({ open, onClose }: Props) {
                 })
               }
             >
-              <option value="off">off — type goes to gemini</option>
-              <option value="on">on — type goes to picoclaw</option>
+              <option value="on">open — typing goes to picoclaw</option>
+              <option value="off">closed — typing is ignored (say neuro to reopen)</option>
             </select>
           </label>
 
@@ -238,12 +178,11 @@ export function SettingsDrawer({ open, onClose }: Props) {
         <section className="drawer-section dim small">
           <h3>about storage</h3>
           <ul>
-            <li>gemini key + model: browser <code>localStorage</code></li>
+            <li>gemini model preference: browser <code>localStorage</code></li>
             <li>agent url + passphrase: browser <code>localStorage</code></li>
-            <li>tool memory (remember/recall): browser <code>localStorage</code></li>
             <li>messages log: browser <code>localStorage</code></li>
-            <li>gemini proxy uses only the server key; nothing else is persisted</li>
-            <li>agent backend persists per-session picoclaw history in its own volume; your browser never sees it</li>
+            <li>the gemini api key lives only in vercel env vars — the browser never sees it</li>
+            <li>picoclaw persists per-session history on the fly.io volume; your browser never sees it</li>
           </ul>
         </section>
       </aside>

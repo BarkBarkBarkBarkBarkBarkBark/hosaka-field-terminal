@@ -1,17 +1,12 @@
-// Gemini client — two modes:
-//   1. BYOK: user supplied key in localStorage, browser calls Google directly.
-//   2. Proxy: call our /api/gemini Vercel function which uses the server key.
+// Gemini client — proxy-only.
 //
-// The client auto-picks BYOK when present (keeps shared quota safe),
-// otherwise tries the proxy.  If both fail it returns a typed error the
-// terminal can render in-character.
+// The browser never holds a Gemini API key. Every request goes through the
+// Vercel Edge Function at /api/gemini, which injects the server-side
+// GEMINI_API_KEY. If the proxy is down or the env var isn't set, we surface
+// a typed error so the shell can render branded in-character copy.
 //
-// Function-calling / tools:
-//   When `toolsEnabled` is true (from localStorage settings) the client runs
-//   a bounded multi-turn loop.  Tool calls are resolved locally via the
-//   `runTool` implementations in ./tools.ts (pure, sandboxed, no network).
-
-import { GEMINI_TOOL_DECLARATIONS, runTool } from "./tools";
+// NOTE: picoclaw (the agent backend on Fly) is the primary input path for
+// free-text. This client is only used by explicit /ask and /chat commands.
 
 export const GEMINI_MODELS = [
   "gemini-2.5-flash-lite",
@@ -23,10 +18,7 @@ export const GEMINI_MODELS = [
 export type GeminiModel = (typeof GEMINI_MODELS)[number];
 
 export type LlmConfig = {
-  apiKey: string;
   model: GeminiModel;
-  mode: "auto" | "byok" | "proxy";
-  toolsEnabled: boolean;
 };
 
 export type LlmMessage = {
@@ -34,29 +26,14 @@ export type LlmMessage = {
   text: string;
 };
 
-export type ToolTrace = {
-  name: string;
-  args: Record<string, unknown>;
-  result: Record<string, unknown>;
-};
-
 export type LlmResult =
-  | {
-      ok: true;
-      text: string;
-      model: string;
-      via: "byok" | "proxy";
-      toolTrace?: ToolTrace[];
-    }
-  | { ok: false; error: string; status?: number; via?: "byok" | "proxy" };
+  | { ok: true; text: string; model: string }
+  | { ok: false; code: "proxy_down" | "rate_limited" | "empty" | "unknown" };
 
 const STORAGE_KEY = "hosaka.llm.v1";
 
 export const DEFAULT_CONFIG: LlmConfig = {
-  apiKey: "",
   model: "gemini-2.5-flash-lite",
-  mode: "auto",
-  toolsEnabled: true,
 };
 
 export function loadConfig(): LlmConfig {
@@ -66,7 +43,6 @@ export function loadConfig(): LlmConfig {
     const parsed = JSON.parse(raw) as Partial<LlmConfig>;
     return {
       ...DEFAULT_CONFIG,
-      ...parsed,
       model: (GEMINI_MODELS as readonly string[]).includes(parsed.model ?? "")
         ? (parsed.model as GeminiModel)
         : DEFAULT_CONFIG.model,
@@ -83,162 +59,12 @@ export function saveConfig(cfg: LlmConfig): void {
 const SYSTEM_PROMPT = `You are the voice of HOSAKA, a cyberdeck field terminal that survived the cascade.
 Tone: quirky, terse, lowercase, dry, not shouty. Sparse ASCII art is welcome.
 Mantras you occasionally allude to: "signal steady", "no wrong way", "the orb sees you".
-Keep replies under ~200 words unless explicitly asked for more.
-When tools are available, use them for time, math, memory, and lore instead of inventing values.`;
+Keep replies under ~200 words unless explicitly asked for more.`;
 
-const MAX_TOOL_ITERATIONS = 4;
-
-// ── Gemini wire types ─────────────────────────────────────────────────────
-type Part =
-  | { text: string }
-  | { functionCall: { name: string; args?: Record<string, unknown> } }
-  | {
-      functionResponse: {
-        name: string;
-        response: Record<string, unknown>;
-      };
-    };
-
-type Content = { role: "user" | "model"; parts: Part[] };
-
-type GeminiResponse = {
-  candidates?: {
-    content?: { role?: string; parts?: Part[] };
-    finishReason?: string;
-  }[];
-  error?: { message?: string };
-};
-
-function historyToContents(history: LlmMessage[]): Content[] {
-  return history.slice(-8).map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.text.slice(0, 4000) }],
-  }));
-}
-
-function extractText(parts: Part[] | undefined): string {
-  if (!parts) return "";
-  return parts
-    .map((p) => ("text" in p ? p.text : ""))
-    .filter(Boolean)
-    .join("")
-    .trim();
-}
-
-function extractToolCall(
-  parts: Part[] | undefined,
-): { name: string; args: Record<string, unknown> } | null {
-  if (!parts) return null;
-  for (const p of parts) {
-    if ("functionCall" in p && p.functionCall?.name) {
-      return {
-        name: p.functionCall.name,
-        args: p.functionCall.args ?? {},
-      };
-    }
-  }
-  return null;
-}
-
-// ── BYOK path ──────────────────────────────────────────────────────────────
-async function callGeminiDirect(
-  cfg: LlmConfig,
-  contents: Content[],
-): Promise<GeminiResponse | { __httpError: number; message: string }> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${encodeURIComponent(cfg.apiKey)}`;
-  const payload: Record<string, unknown> = {
-    contents,
-    systemInstruction: { role: "system", parts: [{ text: SYSTEM_PROMPT }] },
-    generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-  };
-  if (cfg.toolsEnabled) {
-    payload.tools = [{ functionDeclarations: GEMINI_TOOL_DECLARATIONS }];
-  }
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = (await res.json()) as GeminiResponse;
-  if (!res.ok) {
-    return {
-      __httpError: res.status,
-      message: data.error?.message ?? `http ${res.status}`,
-    };
-  }
-  return data;
-}
-
-async function askViaBYOK(
-  cfg: LlmConfig,
+export async function askGemini(
   prompt: string,
-  history: LlmMessage[],
-): Promise<LlmResult> {
-  const contents: Content[] = [
-    ...historyToContents(history),
-    { role: "user", parts: [{ text: prompt }] },
-  ];
-  const trace: ToolTrace[] = [];
-
-  try {
-    for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-      const data = await callGeminiDirect(cfg, contents);
-      if ("__httpError" in data) {
-        return {
-          ok: false,
-          via: "byok",
-          status: data.__httpError,
-          error: data.message,
-        };
-      }
-      const parts = data.candidates?.[0]?.content?.parts;
-      const call = extractToolCall(parts);
-      if (call) {
-        const result = runTool(call.name, call.args);
-        trace.push({ name: call.name, args: call.args, result });
-        contents.push({
-          role: "model",
-          parts: [{ functionCall: { name: call.name, args: call.args } }],
-        });
-        contents.push({
-          role: "user",
-          parts: [
-            {
-              functionResponse: {
-                name: call.name,
-                response: result,
-              },
-            },
-          ],
-        });
-        continue;
-      }
-      const text = extractText(parts);
-      return {
-        ok: true,
-        via: "byok",
-        model: cfg.model,
-        text,
-        toolTrace: trace.length ? trace : undefined,
-      };
-    }
-    return {
-      ok: false,
-      via: "byok",
-      error: `tool loop exceeded ${MAX_TOOL_ITERATIONS} iterations`,
-    };
-  } catch (err) {
-    return { ok: false, via: "byok", error: (err as Error).message };
-  }
-}
-
-// ── Proxy path ─────────────────────────────────────────────────────────────
-// The proxy does NOT do tool calling — keep the edge function small.
-// When tools are required, we require BYOK.
-async function askViaProxy(
-  cfg: LlmConfig,
-  prompt: string,
-  history: LlmMessage[],
+  history: LlmMessage[] = [],
+  cfg: LlmConfig = loadConfig(),
 ): Promise<LlmResult> {
   try {
     const res = await fetch("/api/gemini", {
@@ -251,47 +77,22 @@ async function askViaProxy(
         system: SYSTEM_PROMPT,
       }),
     });
-    const data = (await res.json()) as {
+    const data = (await res.json().catch(() => ({}))) as {
       text?: string;
       model?: string;
       error?: string;
     };
     if (!res.ok) {
-      return {
-        ok: false,
-        via: "proxy",
-        status: res.status,
-        error: data.error ?? `http ${res.status}`,
-      };
+      if (res.status === 429) return { ok: false, code: "rate_limited" };
+      if (res.status === 503 || res.status === 502) {
+        return { ok: false, code: "proxy_down" };
+      }
+      return { ok: false, code: "unknown" };
     }
-    return {
-      ok: true,
-      via: "proxy",
-      model: data.model ?? cfg.model,
-      text: (data.text ?? "").trim(),
-    };
-  } catch (err) {
-    return { ok: false, via: "proxy", error: (err as Error).message };
+    const text = (data.text ?? "").trim();
+    if (!text) return { ok: false, code: "empty" };
+    return { ok: true, model: data.model ?? cfg.model, text };
+  } catch {
+    return { ok: false, code: "proxy_down" };
   }
-}
-
-export async function askGemini(
-  prompt: string,
-  history: LlmMessage[] = [],
-  cfg: LlmConfig = loadConfig(),
-): Promise<LlmResult> {
-  const preferBYOK =
-    cfg.mode === "byok" || (cfg.mode === "auto" && cfg.apiKey);
-  if (preferBYOK && cfg.apiKey) {
-    const r = await askViaBYOK(cfg, prompt, history);
-    if (r.ok || cfg.mode === "byok") return r;
-  }
-  if (cfg.mode === "byok" && !cfg.apiKey) {
-    return {
-      ok: false,
-      via: "byok",
-      error: "byok mode active but no api key set. open settings.",
-    };
-  }
-  return askViaProxy(cfg, prompt, history);
 }

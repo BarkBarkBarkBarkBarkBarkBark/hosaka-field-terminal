@@ -28,17 +28,25 @@ export const DEFAULT_AGENT_URL: string =
 export const MAGIC_WORD: string =
   (import.meta.env.VITE_HOSAKA_MAGIC_WORD as string | undefined) ?? "neuro";
 
+// picoclaw is the heartbeat of the app — enabled by default with the baked-in
+// url + magic passphrase so a fresh browser routes free text to the agent
+// without any setup. Users can still override via /settings or /agent.
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
-  url: "",
-  passphrase: "",
-  enabled: false,
+  url: DEFAULT_AGENT_URL,
+  passphrase: MAGIC_WORD,
+  enabled: true,
 };
 
 export function loadAgentConfig(): AgentConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_AGENT_CONFIG };
-    return { ...DEFAULT_AGENT_CONFIG, ...(JSON.parse(raw) as AgentConfig) };
+    const stored = JSON.parse(raw) as Partial<AgentConfig>;
+    return {
+      url: stored.url || DEFAULT_AGENT_CONFIG.url,
+      passphrase: stored.passphrase || DEFAULT_AGENT_CONFIG.passphrase,
+      enabled: stored.enabled ?? DEFAULT_AGENT_CONFIG.enabled,
+    };
   } catch {
     return { ...DEFAULT_AGENT_CONFIG };
   }
@@ -63,9 +71,20 @@ export type AgentEvent =
   | { type: "reply"; text?: string; stdout: string; stderr: string }
   | { type: "error"; error: string };
 
+export type AgentErrorCode =
+  | "not_configured"
+  | "unauthorized"
+  | "unreachable"
+  | "timeout"
+  | "rate_limited"
+  | "empty"
+  | "busy"
+  | "dropped"
+  | "unknown";
+
 export type AgentResult =
-  | { ok: true; text: string; stderr: string; sid: string; model: string | null }
-  | { ok: false; error: string };
+  | { ok: true; text: string; sid: string; model: string | null }
+  | { ok: false; code: AgentErrorCode };
 
 function buildWsUrl(cfg: AgentConfig): string {
   // Pass the token in the query string as a fallback for browsers that
@@ -94,19 +113,23 @@ export class AgentClient {
     this.close();
   }
 
-  private async ensureOpen(): Promise<void> {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-    if (!looksLikeWsUrl(this.cfg.url)) {
-      throw new Error("agent url must start with ws:// or wss://");
-    }
-    if (!this.cfg.passphrase) {
-      throw new Error("agent passphrase is empty — open /settings");
+  private async ensureOpen(): Promise<AgentErrorCode | null> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return null;
+    if (!looksLikeWsUrl(this.cfg.url) || !this.cfg.passphrase) {
+      return "not_configured";
     }
 
-    return new Promise((resolve, reject) => {
-      const ws = new WebSocket(buildWsUrl(this.cfg));
+    return new Promise<AgentErrorCode | null>((resolve) => {
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(buildWsUrl(this.cfg));
+      } catch {
+        resolve("unreachable");
+        return;
+      }
       this.ws = ws;
       let settled = false;
+      let sawClose = false;
 
       const cleanup = () => {
         ws.removeEventListener("open", onOpen);
@@ -120,7 +143,7 @@ export class AgentClient {
         if (!settled) {
           settled = true;
           cleanup();
-          reject(new Error("websocket error (url/passphrase/cors?)"));
+          resolve(sawClose ? "unauthorized" : "unreachable");
         }
       };
 
@@ -141,7 +164,7 @@ export class AgentClient {
           if (!settled) {
             settled = true;
             cleanup();
-            resolve();
+            resolve(null);
           }
           return;
         }
@@ -149,18 +172,21 @@ export class AgentClient {
         if (data.type === "reply") {
           if (this.inflight) {
             window.clearTimeout(this.inflight.timer);
-            const txt =
-              (data.text && data.text.trim()) ||
-              data.stdout.trim() ||
-              data.stderr.trim() ||
-              "[agent returned nothing]";
-            this.inflight.resolve({
-              ok: true,
-              text: txt,
-              stderr: data.stderr,
-              sid: this.hello?.sid ?? "?",
-              model: this.hello?.model ?? null,
-            });
+            // NEVER fall back to raw stdout/stderr — that's where the picoclaw
+            // banner and log chrome live. If the server-side cleaner produced
+            // nothing usable, treat it as empty and let the shell render a
+            // branded placeholder.
+            const txt = (data.text ?? "").trim();
+            if (!txt) {
+              this.inflight.resolve({ ok: false, code: "empty" });
+            } else {
+              this.inflight.resolve({
+                ok: true,
+                text: txt,
+                sid: this.hello?.sid ?? "?",
+                model: this.hello?.model ?? null,
+              });
+            }
             this.inflight = null;
           }
           return;
@@ -169,7 +195,17 @@ export class AgentClient {
         if (data.type === "error") {
           if (this.inflight) {
             window.clearTimeout(this.inflight.timer);
-            this.inflight.resolve({ ok: false, error: data.error });
+            const e = (data.error ?? "").toLowerCase();
+            const code: AgentErrorCode = /unauth/.test(e)
+              ? "unauthorized"
+              : /rate/.test(e)
+                ? "rate_limited"
+                : /timed out|timeout/.test(e)
+                  ? "timeout"
+                  : /still thinking|patience/.test(e)
+                    ? "busy"
+                    : "unknown";
+            this.inflight.resolve({ ok: false, code });
             this.inflight = null;
           }
           return;
@@ -178,15 +214,17 @@ export class AgentClient {
         // ping / thinking → no-op (server is just keeping the channel warm)
       });
 
-      ws.addEventListener("close", () => {
+      ws.addEventListener("close", (evt) => {
+        sawClose = true;
         if (!settled) {
           settled = true;
           cleanup();
-          reject(new Error("websocket closed before hello"));
+          // 4401 is the server's "unauthorized" code.
+          resolve(evt.code === 4401 ? "unauthorized" : "unreachable");
         }
         if (this.inflight) {
           window.clearTimeout(this.inflight.timer);
-          this.inflight.resolve({ ok: false, error: "connection dropped" });
+          this.inflight.resolve({ ok: false, code: "dropped" });
           this.inflight = null;
         }
         this.hello = null;
@@ -197,24 +235,22 @@ export class AgentClient {
 
   async send(message: string): Promise<AgentResult> {
     if (this.inflight) {
-      return { ok: false, error: "still waiting on the last reply." };
+      return { ok: false, code: "busy" };
     }
 
-    try {
-      await this.ensureOpen();
-    } catch (e) {
-      return { ok: false, error: (e as Error).message };
-    }
+    const openErr = await this.ensureOpen();
+    if (openErr) return { ok: false, code: openErr };
+
     const ws = this.ws;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      return { ok: false, error: "socket not open" };
+      return { ok: false, code: "unreachable" };
     }
 
     return new Promise<AgentResult>((resolve) => {
       const timer = window.setTimeout(() => {
         if (this.inflight) {
           this.inflight = null;
-          resolve({ ok: false, error: "timeout waiting for reply (120s)" });
+          resolve({ ok: false, code: "timeout" });
         }
       }, 120_000);
 
@@ -235,7 +271,7 @@ export class AgentClient {
     this.hello = null;
     if (this.inflight) {
       window.clearTimeout(this.inflight.timer);
-      this.inflight.resolve({ ok: false, error: "connection closed" });
+      this.inflight.resolve({ ok: false, code: "dropped" });
       this.inflight = null;
     }
   }

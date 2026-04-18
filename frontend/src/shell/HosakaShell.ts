@@ -16,6 +16,7 @@ import {
   loadAgentConfig,
   saveAgentConfig,
   type AgentConfig,
+  type AgentErrorCode,
 } from "../llm/agentClient";
 
 // ANSI helpers
@@ -235,11 +236,14 @@ export class HosakaShell {
         this.writePrompt();
         return;
       }
+      // picoclaw is the heartbeat: free text always routes to the agent.
+      // If the channel is off (user disabled it), we nudge them back to neuro
+      // rather than silently falling through to the gemini proxy.
       const agentCfg = loadAgentConfig();
-      if (agentCfg.enabled) {
-        await this.askAgent(raw, agentCfg);
+      if (!agentCfg.enabled) {
+        this.channelClosed();
       } else {
-        await this.askLlm(raw);
+        await this.askAgent(raw, agentCfg);
       }
       this.writePrompt();
       return;
@@ -324,27 +328,11 @@ export class HosakaShell {
 
   private async askLlm(prompt: string): Promise<void> {
     const cfg = loadLlmConfig();
-    const hasKey = !!cfg.apiKey;
-    const willUse =
-      cfg.mode === "proxy" ? "proxy" : hasKey ? "byok" : "proxy";
-
-    this.writeln(
-      `  ${DARK_GRAY}// channel open → ${willUse} · ${cfg.model}${R}`,
-    );
     this.busy = true;
     try {
       const res = await askGemini(prompt, this.llmHistory, cfg);
       if (!res.ok) {
-        this.writeln(`  ${RED}✗${R} ${res.error}`);
-        if (res.status === 503 || /proxy is not configured/i.test(res.error)) {
-          this.writeln(
-            `  ${GRAY}no byok key and no proxy available. open ${CYAN}/settings${R}${GRAY} to add one.${R}`,
-          );
-        } else if (res.status === 429) {
-          this.writeln(
-            `  ${GRAY}rate limit. breathe. try again in a moment.${R}`,
-          );
-        }
+        this.writeGeminiFallback(res.code);
         return;
       }
       this.llmHistory.push({ role: "user", text: prompt });
@@ -360,6 +348,31 @@ export class HosakaShell {
     } finally {
       this.busy = false;
     }
+  }
+
+  private writeGeminiFallback(code: "proxy_down" | "rate_limited" | "empty" | "unknown"): void {
+    this.writeln("");
+    switch (code) {
+      case "rate_limited":
+        this.writeln(`  ${GRAY}the channel is crowded. breathe. try again in a moment.${R}`);
+        break;
+      case "proxy_down":
+        this.writeln(`  ${GRAY}the orb is quiet. the relay is resting.${R}`);
+        this.writeln(`  ${GRAY}say ${VIOLET}neuro${R}${GRAY} and try again — picoclaw still listens.${R}`);
+        break;
+      case "empty":
+        this.writeln(`  ${GRAY}the orb heard you but had nothing to say. try again.${R}`);
+        break;
+      default:
+        this.writeln(`  ${GRAY}signal faint. try again in a moment.${R}`);
+    }
+    this.writeln("");
+  }
+
+  private channelClosed(): void {
+    this.writeln("");
+    this.writeln(`  ${GRAY}the channel is quiet. say ${VIOLET}neuro${R}${GRAY} to open it again.${R}`);
+    this.writeln("");
   }
 
   private handleModel(arg: string): void {
@@ -422,23 +435,14 @@ export class HosakaShell {
   }
 
   private async askAgent(prompt: string, cfg: AgentConfig): Promise<void> {
-    this.writeln(
-      `  ${DARK_GRAY}// agent channel → ${cfg.url.replace(/^wss?:\/\//, "")}${R}`,
-    );
     this.busy = true;
     try {
       const agent = getAgent(cfg);
       const res = await agent.send(prompt);
       if (!res.ok) {
-        this.writeln(`  ${RED}✗${R} ${res.error}`);
-        if (/unauthor|url|passphrase|cors/i.test(res.error)) {
-          this.writeln(
-            `  ${GRAY}check ${CYAN}/settings${R}${GRAY} → agent backend.${R}`,
-          );
-        }
+        this.writeAgentFallback(res.code);
         return;
       }
-      this.writeln(`  ${DARK_GRAY}sid=${res.sid} · model=${res.model ?? "?"}${R}`);
       this.writeln("");
       for (const line of res.text.split("\n")) {
         this.writeln(`  ${line}`);
@@ -447,6 +451,41 @@ export class HosakaShell {
     } finally {
       this.busy = false;
     }
+  }
+
+  // Branded in-character copy for every picoclaw failure mode. The user
+  // should never see raw error strings, http codes, or stack traces.
+  private writeAgentFallback(code: AgentErrorCode): void {
+    this.writeln("");
+    switch (code) {
+      case "not_configured":
+        this.writeln(`  ${GRAY}the channel isn't tuned yet. say ${VIOLET}neuro${R}${GRAY} to open it.${R}`);
+        break;
+      case "unauthorized":
+        this.writeln(`  ${GRAY}the door didn't recognize the word. say ${VIOLET}neuro${R}${GRAY} to try again.${R}`);
+        break;
+      case "unreachable":
+        this.writeln(`  ${GRAY}the relay is sleeping. give it a moment and try again.${R}`);
+        break;
+      case "timeout":
+        this.writeln(`  ${GRAY}the signal took too long to come back. try again.${R}`);
+        break;
+      case "rate_limited":
+        this.writeln(`  ${GRAY}too many pings in a short window. breathe, then try again.${R}`);
+        break;
+      case "busy":
+        this.writeln(`  ${GRAY}still listening to the last thing you said. patience.${R}`);
+        break;
+      case "dropped":
+        this.writeln(`  ${GRAY}the channel blinked. try once more.${R}`);
+        break;
+      case "empty":
+        this.writeln(`  ${GRAY}picoclaw heard you but said nothing. try rephrasing.${R}`);
+        break;
+      default:
+        this.writeln(`  ${GRAY}signal faint. try again in a moment.${R}`);
+    }
+    this.writeln("");
   }
 
   private async handleAgent(arg: string): Promise<void> {
@@ -509,7 +548,7 @@ export class HosakaShell {
     }
     if (sub === "test") {
       if (!cfg.url || !cfg.passphrase) {
-        this.writeln(`  ${RED}set url + passphrase first.${R}`);
+        this.writeln(`  ${GRAY}the channel isn't tuned. say ${VIOLET}neuro${R}${GRAY} first.${R}`);
         return;
       }
       this.writeln(`  ${DARK_GRAY}pinging agent…${R}`);
@@ -520,7 +559,7 @@ export class HosakaShell {
         if (res.ok) {
           this.writeln(`  ${GRAY}✓ reply:${R} ${res.text.split("\n")[0]}`);
         } else {
-          this.writeln(`  ${RED}✗${R} ${res.error}`);
+          this.writeAgentFallback(res.code);
         }
       } finally {
         this.busy = false;

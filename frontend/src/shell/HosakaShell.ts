@@ -10,6 +10,8 @@ import {
   type LlmMessage,
 } from "../llm/gemini";
 import {
+  DEFAULT_AGENT_URL,
+  MAGIC_WORD,
   getAgent,
   loadAgentConfig,
   saveAgentConfig,
@@ -85,7 +87,7 @@ export class HosakaShell {
       `  ${DARK_GRAY}/commands to explore  ·  /help to start  ·  /ask the orb anything${R}`,
     );
     this.writeln(
-      `  ${DARK_GRAY}llm wiring: ${CYAN}/settings${R}${DARK_GRAY} → paste a gemini key, or rely on the proxy${R}`,
+      `  ${DARK_GRAY}if someone shared a word with you, ${VIOLET}say it${R}${DARK_GRAY} and the channel opens.${R}`,
     );
     this.writeln("");
   }
@@ -227,6 +229,12 @@ export class HosakaShell {
     }
 
     if (!raw.startsWith("/")) {
+      const normalized = raw.trim().toLowerCase();
+      if (normalized === MAGIC_WORD.toLowerCase()) {
+        this.magicWord();
+        this.writePrompt();
+        return;
+      }
       const agentCfg = loadAgentConfig();
       if (agentCfg.enabled) {
         await this.askAgent(raw, agentCfg);
@@ -372,6 +380,36 @@ export class HosakaShell {
     }
     saveLlmConfig({ ...cfg, model: arg as GeminiModel });
     this.writeln(`  ${GRAY}model set →${R} ${AMBER}${arg}${R}`);
+  }
+
+  private magicWord(): void {
+    const cfg = loadAgentConfig();
+    if (cfg.enabled) {
+      this.writeln("");
+      this.writeln(`  ${GRAY}channel already open.${R} ${AMBER}signal steady.${R}`);
+      this.writeln("");
+      return;
+    }
+
+    const next: AgentConfig = {
+      url: cfg.url || DEFAULT_AGENT_URL,
+      passphrase: MAGIC_WORD,
+      enabled: true,
+    };
+    saveAgentConfig(next);
+
+    this.writeln("");
+    this.writeln(`  ${DARK_GRAY}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░${R}`);
+    this.writeln(`  ${DARK_GRAY}// the word was spoken${R}`);
+    this.writeln(`  ${AMBER}authorizing${R}${DARK_GRAY}…${R}  ${GREEN}passphrase accepted${R}`);
+    this.writeln(`  ${AMBER}connecting${R}${DARK_GRAY}…${R}  ${GREEN}agent channel open${R}`);
+    this.writeln(`  ${DARK_GRAY}░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░${R}`);
+    this.writeln("");
+    this.writeln(`  ${GRAY}you are now speaking with picoclaw. it has a real filesystem${R}`);
+    this.writeln(`  ${GRAY}and a real shell (sandboxed). it answers ${VIOLET}slowly${R}${GRAY} — wait for it.${R}`);
+    this.writeln("");
+    this.writeln(`  ${DARK_GRAY}to close the channel, type${R} ${CYAN}/agent off${R}${DARK_GRAY}.${R}`);
+    this.writeln("");
   }
 
   private openSettings(): void {

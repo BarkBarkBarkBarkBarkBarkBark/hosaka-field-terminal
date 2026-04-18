@@ -15,6 +15,19 @@ export type AgentConfig = {
 
 const STORAGE_KEY = "hosaka.agent.v1";
 
+// Baked-in default so users don't have to paste the URL.  Override at build
+// time with `VITE_HOSAKA_AGENT_URL=wss://... npm run build` or at runtime in
+// the settings drawer.
+export const DEFAULT_AGENT_URL: string =
+  (import.meta.env.VITE_HOSAKA_AGENT_URL as string | undefined) ??
+  "wss://hosaka-field-terminal-alpha.fly.dev/ws/agent";
+
+// The "magic word" a visitor can type in the terminal to auto-configure the
+// agent with the default URL + shared passphrase.  Matches server-side
+// HOSAKA_ACCESS_TOKEN.  Override at build with VITE_HOSAKA_MAGIC_WORD.
+export const MAGIC_WORD: string =
+  (import.meta.env.VITE_HOSAKA_MAGIC_WORD as string | undefined) ?? "neuro";
+
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   url: "",
   passphrase: "",

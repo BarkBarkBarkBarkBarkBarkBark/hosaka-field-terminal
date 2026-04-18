@@ -1,23 +1,61 @@
-# fly.toml app configuration file generated for hosaka-field-terminal-77b790f on 2026-04-18T06:44:41Z
+# fly.io configuration for the hosaka agent-server (FastAPI + picoclaw).
 #
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+# App: hosaka-field-terminal-alpha.fly.dev
 #
+# The Dockerfile and this config live at the repo ROOT so `fly launch` and
+# `fly deploy` work from here with no flags.  Python sources live under
+# agent-server/ and are copied in by the Dockerfile.
+#
+# Secrets (set once per app):
+#   fly secrets set HOSAKA_ACCESS_TOKEN='pick a long passphrase'
+#   fly secrets set GEMINI_API_KEY='AIza...'
+#   fly secrets set HOSAKA_ALLOWED_ORIGINS='https://your-project.vercel.app'
+#
+# Optional persistent volume (for picoclaw session history across restarts):
+#   fly volumes create hosaka_sessions --size 1 --region ams
+#
+# Deploy:
+#   fly deploy
 
-app = 'hosaka-field-terminal-77b790f'
-primary_region = 'ams'
+app = "hosaka-field-terminal-alpha"
+primary_region = "ams"
 
 [build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  HOSAKA_WORKSPACE_ROOT = "/workspaces"
+  HOSAKA_SESSION_TTL = "300"
+  HOSAKA_MSG_TIMEOUT = "45"
+  HOSAKA_MSG_MAX_CHARS = "4000"
+  HOSAKA_RATE_PER_MIN = "30"
+  PICOCLAW_MODEL = "gemini/gemini-2.5-flash-lite"
+
+# Uncomment after running `fly volumes create hosaka_sessions --size 1 --region iad`.
+# Without it, sessions are fully ephemeral (wiped when the Machine restarts).
+# [mounts]
+#   source = "hosaka_sessions"
+#   destination = "/workspaces"
+#
+# If you add a mount, you must have EXACTLY ONE machine (volumes don't fan
+# out). Scale down first:
+#   fly scale count 1
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 0
-  processes = ['app']
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/healthz"
 
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 256
+  size = "shared-cpu-1x"
+  memory = "256mb"

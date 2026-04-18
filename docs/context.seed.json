@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": {
+    "name": "hosaka-web-desktop",
+    "upstream": "https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka",
+    "tagline": "a terminal behind a functional screen. signal steady. no wrong way.",
+    "tone": ["quirky", "terse", "lowercase", "dry", "not shouty"]
+  },
+  "modes": {
+    "hosted": {
+      "description": "Static SPA, no backend. Terminal is simulated in TypeScript.",
+      "stack": ["vite", "react", "typescript", "xterm.js"],
+      "entry": "frontend/src/main.tsx",
+      "deploy_targets": ["github-pages", "vercel", "cloudflare-pages"]
+    },
+    "appliance": {
+      "description": "Original Python TUI on Raspberry Pi or laptop.",
+      "stack": ["python>=3.10", "fastapi", "picoclaw"],
+      "entry": "python -m hosaka",
+      "root": "Hosaka_Field-Terminal/",
+      "preserved_verbatim": true
+    }
+  },
+  "paths": {
+    "frontend": "frontend/",
+    "frontend_src": "frontend/src/",
+    "panels": "frontend/src/panels/",
+    "shell": "frontend/src/shell/",
+    "styles": "frontend/src/styles/app.css",
+    "appliance": "Hosaka_Field-Terminal/",
+    "docs": "docs/",
+    "workflows": ".github/workflows/"
+  },
+  "panels": [
+    {"id": "terminal", "label": "Terminal", "file": "frontend/src/panels/TerminalPanel.tsx"},
+    {"id": "video", "label": "Video", "file": "frontend/src/panels/VideoPanel.tsx"},
+    {"id": "messages", "label": "Messages", "file": "frontend/src/panels/MessagesPanel.tsx"},
+    {"id": "lore", "label": "Lore", "file": "frontend/src/panels/LorePanel.tsx"}
+  ],
+  "conventions": {
+    "python_command": "python",
+    "node_pm": "npm",
+    "node_version": ">=20",
+    "typescript_strict": true,
+    "css": "global-stylesheet-with-vars",
+    "commits": "ask-before-committing"
+  },
+  "non_goals": [
+    "embed third-party sites via iframe in hosted mode",
+    "rewrite Python TUI",
+    "add a server to the hosted build",
+    "ship secrets or bake webhook URLs"
+  ],
+  "extension_points": {
+    "new_panel": "add file to frontend/src/panels/, register in App.tsx PANELS array and render block",
+    "new_shell_command": "edit frontend/src/shell/commands.ts and HosakaShell.dispatch",
+    "theme": "edit :root vars in frontend/src/styles/app.css"
+  }
+}

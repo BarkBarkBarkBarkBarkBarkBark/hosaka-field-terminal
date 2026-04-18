@@ -1,0 +1,25 @@
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# node / vite
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+
+# env
+.env
+.env.local
+.env.*.local
+
+# os
+.DS_Store
+Thumbs.db
+
+# ide
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,605 @@
+/* ─────────────────────────────────────────────────────────────
+   HOSAKA — web desktop styles
+   signal steady. dark by default. touch-friendly by design.
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --bg-0: #0b0d10;
+  --bg-1: #111418;
+  --bg-2: #171b20;
+  --bg-3: #1e232a;
+  --fg-0: #e6ebf0;
+  --fg-1: #b8c0ca;
+  --fg-2: #7a828c;
+  --fg-3: #4f565e;
+
+  --amber: #ffbf46;
+  --amber-dim: #8a6a2c;
+  --cyan: #79ffe1;
+  --cyan-dim: #4a9b8a;
+  --violet: #c779ff;
+  --violet-dim: #7548a4;
+  --blue: #58a6ff;
+  --green: #7ee787;
+  --red: #ff6b6b;
+
+  --border: #262c33;
+  --border-strong: #39424d;
+  --radius: 10px;
+  --radius-sm: 6px;
+
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, Menlo, Consolas,
+    monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto,
+    sans-serif;
+
+  --dock-h: 58px;
+  --top-h: 52px;
+  --foot-h: 28px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--fg-0);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* ── shell layout ────────────────────────────────────────── */
+
+.hosaka-shell {
+  display: grid;
+  grid-template-rows: var(--top-h) var(--dock-h) 1fr var(--foot-h);
+  height: 100dvh;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(199, 121, 255, 0.08), transparent 70%),
+    radial-gradient(1000px 500px at 110% 110%, rgba(255, 191, 70, 0.05), transparent 70%),
+    var(--bg-0);
+}
+
+/* ── top bar ─────────────────────────────────────────────── */
+
+.hosaka-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(to bottom, var(--bg-1), var(--bg-0));
+}
+
+.hosaka-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-mono);
+}
+
+.hosaka-brand-logo {
+  color: var(--amber);
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.hosaka-brand-sub {
+  color: var(--fg-3);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.hosaka-topbar-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── dock / tabs ─────────────────────────────────────────── */
+
+.hosaka-dock {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.hosaka-dock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  min-height: 44px;
+  background: transparent;
+  color: var(--fg-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.hosaka-dock-btn:hover {
+  background: var(--bg-2);
+  color: var(--fg-0);
+}
+
+.hosaka-dock-btn.is-active {
+  background: var(--bg-3);
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  box-shadow: inset 0 -2px 0 var(--amber);
+}
+
+.hosaka-dock-glyph {
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.hosaka-dock-label {
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+}
+
+/* ── stage & panels ──────────────────────────────────────── */
+
+.hosaka-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.hosaka-panel {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.hosaka-panel[hidden] {
+  display: none;
+}
+
+/* ── footer ──────────────────────────────────────────────── */
+
+.hosaka-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.hosaka-footer-dim { color: var(--fg-3); }
+.hosaka-footer-dot { color: var(--amber-dim); }
+
+/* ── badges ──────────────────────────────────────────────── */
+
+.signal-badge, .plant-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-1);
+}
+
+.signal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(126, 231, 135, 0.7);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.85); }
+}
+
+.plant-glyph { color: var(--green); }
+
+/* ── terminal panel ──────────────────────────────────────── */
+
+.terminal-wrap {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  background: var(--bg-0);
+}
+
+.terminal-host {
+  height: 100%;
+  width: 100%;
+  padding: 10px;
+  background: #0b0d10;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.terminal-host .xterm {
+  height: 100%;
+}
+
+/* ── panel header ────────────────────────────────────────── */
+
+.panel-header {
+  padding: 24px 28px 12px;
+}
+
+.panel-header h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--fg-0);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-glyph {
+  color: var(--amber);
+}
+
+.panel-sub {
+  margin: 0;
+  color: var(--fg-2);
+  font-size: 13px;
+  max-width: 680px;
+  line-height: 1.5;
+}
+
+/* ── buttons ─────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  color: var(--fg-0);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--bg-3);
+  border-color: var(--amber-dim);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--amber);
+  color: #201603;
+  border-color: var(--amber);
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #ffcd6e;
+  border-color: #ffcd6e;
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn-file {
+  cursor: pointer;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pill:hover { background: var(--bg-3); color: var(--fg-0); }
+
+.err { color: var(--red); padding: 0 28px; font-family: var(--font-mono); font-size: 13px; }
+.dim { color: var(--fg-2); }
+.dim.small { font-size: 12px; }
+
+/* ── video panel ─────────────────────────────────────────── */
+
+.video-wrap { padding-bottom: 24px; }
+
+.video-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 0 28px 12px;
+}
+
+.video-url {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.video-url input[type="url"] {
+  flex: 1;
+  padding: 10px 12px;
+  min-height: 40px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.video-samples {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 28px 16px;
+  align-items: center;
+}
+
+.video-samples-label {
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.video-stage {
+  margin: 0 28px;
+  padding: 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.video-stage video {
+  width: 100%;
+  max-height: 60dvh;
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+
+.video-empty {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  color: var(--fg-3);
+}
+
+.video-empty pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── messages panel ──────────────────────────────────────── */
+
+.messages-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.messages-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 28px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.messages-toolbar .spacer { flex: 1; }
+
+.messages-settings {
+  display: grid;
+  gap: 10px;
+  margin: 0 28px 14px;
+  padding: 14px 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.messages-settings label {
+  display: grid;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-2);
+}
+
+.messages-settings input,
+.messages-settings select {
+  padding: 10px 12px;
+  min-height: 40px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.messages-log {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 28px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.messages-empty {
+  padding: 30px 0;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.msg {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  max-width: 640px;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.msg-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--fg-3);
+  margin-bottom: 4px;
+  align-items: center;
+}
+
+.msg-from { color: var(--amber); letter-spacing: 0.08em; text-transform: uppercase; }
+.msg-time { color: var(--fg-3); }
+.msg-status { padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border); }
+.msg-status-failed { color: var(--red); border-color: rgba(255,107,107,0.4); }
+.msg-status-pending { color: var(--blue); border-color: rgba(88,166,255,0.4); }
+
+.msg-operator { align-self: flex-end; border-color: var(--amber-dim); background: #1a1509; }
+.msg-orb { align-self: flex-start; border-color: var(--violet-dim); background: #17111e; }
+.msg-system { align-self: center; border-style: dashed; color: var(--fg-2); font-size: 12px; }
+
+.messages-compose {
+  display: flex;
+  gap: 10px;
+  padding: 12px 28px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+}
+
+.messages-compose textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 46px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── lore panel ──────────────────────────────────────────── */
+
+.lore-wrap { padding-bottom: 30px; }
+
+.lore-card {
+  margin: 0 28px 14px;
+  padding: 18px 22px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--fg-1);
+}
+
+.lore-card pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.lore-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 0 28px 18px;
+}
+
+.lore-manifest {
+  margin: 0 28px;
+  padding: 16px 22px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius);
+}
+
+.lore-manifest h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lore-manifest ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ── responsive ──────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .hosaka-brand-sub { display: none; }
+  .panel-header { padding: 16px 16px 8px; }
+  .video-controls, .video-samples, .video-stage, .messages-toolbar,
+  .messages-log, .messages-compose, .lore-card, .lore-actions, .lore-manifest {
+    padding-left: 16px;
+    padding-right: 16px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  .hosaka-dock-label { font-size: 12px; }
+}

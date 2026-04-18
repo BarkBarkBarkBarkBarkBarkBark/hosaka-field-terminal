@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# env
+.env*
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# keys
+*.pem

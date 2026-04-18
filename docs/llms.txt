@@ -1,0 +1,27 @@
+# Hosaka Web Desktop
+
+> A touch-friendly web desktop shell that wraps a simulated terminal,
+> video player, and webhook-powered messages. Static-deployable to
+> GitHub Pages / Vercel / Cloudflare. Coexists with the original
+> Hosaka Python TUI for appliance mode.
+
+Start with AGENTS.md. It is the highest-signal file in the repo.
+
+## Project docs
+- [README](../README.md): overview, quick start, deploy targets.
+- [AGENTS](../AGENTS.md): conventions, commands, non-goals.
+- [Architecture](./architecture.md): layout and rationale.
+- [Local development](./local-development.md): dev loop.
+- [Deployment](./deployment.md): GH Pages / Vercel / Cloudflare / custom domain.
+- [Appliance mode](./appliance-mode.md): kiosk on Raspberry Pi.
+- [Context seed](./context.seed.json): structured facts, JSON.
+
+## Source of truth
+- [frontend/src/shell/HosakaShell.ts](../frontend/src/shell/HosakaShell.ts): simulated terminal shell.
+- [frontend/src/shell/commands.ts](../frontend/src/shell/commands.ts): command taxonomy.
+- [frontend/src/App.tsx](../frontend/src/App.tsx): top-level panel registry.
+- [Hosaka_Field-Terminal/hosaka/main_console.py](../Hosaka_Field-Terminal/hosaka/main_console.py): original TUI; canonical command list.
+
+## Optional
+- [instructions.md](../instructions.md): historical mission brief (aspired to AWS; superseded by this static-first build).
+- [Hosaka_Field-Terminal/docs/no_wrong_way_manifest.md](../Hosaka_Field-Terminal/docs/no_wrong_way_manifest.md): operator manifest.

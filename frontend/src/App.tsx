@@ -11,7 +11,6 @@ export type PanelId = "terminal" | "messages" | "reading" | "todo";
 
 const PANELS: { id: PanelId; label: string; glyph: string }[] = [
   { id: "terminal", label: "Terminal", glyph: "›_" },
-  { id: "messages", label: "Messages", glyph: "✉" },
   { id: "reading", label: "Reading", glyph: "❑" },
   { id: "todo", label: "Open Loops", glyph: "▣" },
 ];

@@ -199,8 +199,12 @@ async def _run_picoclaw(
         "--session",
         f"hosaka:{session.sid}",
     ]
+    # If PICOCLAW_MODEL is set, pass the *friendly* short name (model_name),
+    # not the litellm-style provider/model (which is what `model` expects).
+    # picoclaw's --model flag looks up by model_name in model_list.
     if PICOCLAW_MODEL:
-        cmd += ["--model", PICOCLAW_MODEL]
+        friendly = PICOCLAW_MODEL.split("/", 1)[-1]
+        cmd += ["--model", friendly]
 
     log.info("sid=%s running picoclaw", session.sid)
     proc = await asyncio.create_subprocess_exec(

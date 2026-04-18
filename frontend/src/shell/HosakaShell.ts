@@ -523,11 +523,20 @@ export class HosakaShell {
   }
 
   private openSettings(): void {
+    // In the hosted web build settings are hidden to avoid leaking the
+    // agent passphrase. The drawer still exists for the desktop rollout
+    // and can be enabled with VITE_SHOW_SETTINGS=1.
+    const show = import.meta.env.VITE_SHOW_SETTINGS === "1";
+    if (!show) {
+      this.writeln(`  ${GRAY}settings are managed by the operator on the hosted build.${R}`);
+      this.writeln(`  ${GRAY}try ${CYAN}/agent${R}${GRAY}, ${CYAN}/model${R}${GRAY}, or just type and the channel handles the rest.${R}`);
+      return;
+    }
     try {
       window.dispatchEvent(new CustomEvent("hosaka:open-settings"));
-      this.writeln(`  ${GRAY}settings drawer opened. tap the gear next time.${R}`);
+      this.writeln(`  ${GRAY}settings drawer opened.${R}`);
     } catch {
-      this.writeln(`  ${RED}could not open settings (non-browser env?)${R}`);
+      this.writeln(`  ${GRAY}settings not available in this environment.${R}`);
     }
   }
 

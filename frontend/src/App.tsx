@@ -16,6 +16,11 @@ const PANELS: { id: PanelId; label: string; glyph: string }[] = [
   { id: "todo", label: "Open Loops", glyph: "▣" },
 ];
 
+// Settings drawer is hidden in the hosted web build to avoid exposing
+// the agent passphrase. Enable for the desktop/appliance rollout with
+// VITE_SHOW_SETTINGS=1 at build time.
+const SHOW_SETTINGS = import.meta.env.VITE_SHOW_SETTINGS === "1";
+
 export function App() {
   const [active, setActive] = useState<PanelId>("terminal");
   const [bootMessage, setBootMessage] = useState("...waking the orb...");
@@ -50,14 +55,16 @@ export function App() {
         <div className="hosaka-topbar-right">
           <SignalBadge label={bootMessage} />
           <PlantBadge />
-          <button
-            className="icon-btn"
-            aria-label="settings"
-            title="settings"
-            onClick={() => setSettingsOpen(true)}
-          >
-            ⚙
-          </button>
+          {SHOW_SETTINGS && (
+            <button
+              className="icon-btn"
+              aria-label="settings"
+              title="settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              ⚙
+            </button>
+          )}
         </div>
       </header>
 
@@ -91,7 +98,9 @@ export function App() {
         </div>
       </main>
 
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {SHOW_SETTINGS && (
+        <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      )}
 
       <footer className="hosaka-footer">
         <span className="hosaka-footer-dim">:: signal steady ::</span>

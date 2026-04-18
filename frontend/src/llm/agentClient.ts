@@ -28,13 +28,13 @@ export const DEFAULT_AGENT_URL: string =
 export const MAGIC_WORD: string =
   (import.meta.env.VITE_HOSAKA_MAGIC_WORD as string | undefined) ?? "neuro";
 
-// picoclaw is the heartbeat of the app — enabled by default with the baked-in
-// url + magic passphrase so a fresh browser routes free text to the agent
-// without any setup. Users can still override via /settings or /agent.
+// picoclaw is the heartbeat — but the channel is closed until the visitor
+// says the magic word. The url + passphrase are pre-filled so saying neuro
+// is the only step required to open the door.
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   url: DEFAULT_AGENT_URL,
   passphrase: MAGIC_WORD,
-  enabled: true,
+  enabled: false,
 };
 
 export function loadAgentConfig(): AgentConfig {

@@ -346,6 +346,21 @@ async def ws_agent(ws: WebSocket) -> None:
         "ttl_seconds": SESSION_TTL_SECONDS,
     })
 
+    # Always-on keepalive: Fly's edge proxy closes silent websockets after
+    # ~60s of inactivity, which ruined the UX between user messages. We
+    # send a tiny `{"type":"ping"}` frame every PING_INTERVAL_SECONDS so
+    # the channel stays warm whether picoclaw is running or not. The
+    # client treats `ping` as a no-op.
+    async def _idle_ping_loop() -> None:
+        while True:
+            try:
+                await asyncio.sleep(PING_INTERVAL_SECONDS)
+                await ws.send_json({"type": "ping"})
+            except Exception:
+                return
+
+    idle_pinger = asyncio.create_task(_idle_ping_loop())
+
     try:
         while True:
             raw = await ws.receive_text()
@@ -391,21 +406,9 @@ async def ws_agent(ws: WebSocket) -> None:
                     })
                     continue
 
-                # keepalive pings so slow picoclaw calls don't trip Fly's
-                # idle proxy (~60s) or the browser's WS timeout.
-                async def _ping_loop() -> None:
-                    while True:
-                        await asyncio.sleep(PING_INTERVAL_SECONDS)
-                        try:
-                            await ws.send_json({"type": "ping"})
-                        except Exception:
-                            return
-
-                pinger = asyncio.create_task(_ping_loop())
-                try:
-                    stdout, stderr = await _run_picoclaw(msg, session)
-                finally:
-                    pinger.cancel()
+                # The idle pinger above already keeps the socket warm; no
+                # additional per-message pinger is needed.
+                stdout, stderr = await _run_picoclaw(msg, session)
 
                 if stderr.strip():
                     log.info("sid=%s stderr=%s", sid, stderr.strip()[:400])
@@ -426,6 +429,7 @@ async def ws_agent(ws: WebSocket) -> None:
         except Exception:
             pass
     finally:
+        idle_pinger.cancel()
         _cleanup_session(sid)
 
 

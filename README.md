@@ -17,11 +17,10 @@
       [_____]
 ```
 
-A **touch-friendly web desktop** that puts a real-ish terminal behind a
-glass screen, plays videos, and sends messages — deployable for free on
-**GitHub Pages**, **Vercel**, or **Cloudflare Pages**. The underlying
-appliance (Python TUI + Picoclaw) still runs on a Raspberry Pi whenever
-you want the real thing.
+A **touch-friendly web desktop** that puts a terminal behind a glass
+screen and wires it to a real **picoclaw** agent on the backend. Type
+into the terminal and you're talking to an agentic framework that can
+walk a sandboxed filesystem, read files, and run a restricted shell.
 
 > This repo is a fork of
 > [`BarkBarkBarkBarkBarkBarkBark/Hosaka`](https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka),
@@ -30,18 +29,47 @@ you want the real thing.
 
 ---
 
-## Two modes, one identity
+## Deployment stack
 
-| Mode          | Where                                     | Backend                    | Terminal           |
-| ------------- | ----------------------------------------- | -------------------------- | ------------------ |
-| **Hosted**    | GH Pages / Vercel / Cloudflare Pages      | none (static)              | simulated in JS    |
-| **Appliance** | Raspberry Pi, cyberdeck, kiosk Chromium   | FastAPI + Picoclaw gateway | real PTY eventually |
+```
+    your laptop
+        │  git push
+        ▼
+   ┌──────────────┐
+   │   GitHub     │  source of truth
+   └──────┬───────┘
+          │  webhook on push to main
+          ▼
+   ┌──────────────┐    /api/gemini  (edge function)
+   │   Vercel     │ ── proxy for the /ask command
+   │              │    holds GEMINI_API_KEY
+   │  serves the  │
+   │  static SPA  │    browser  ── wss://… ──┐
+   └──────────────┘                          │
+                                             ▼
+                                      ┌──────────────┐
+                                      │   Fly.io     │  picoclaw box
+                                      │              │  the heartbeat
+                                      │  agent-server│  holds
+                                      │  + picoclaw  │  GEMINI_API_KEY
+                                      └──────────────┘  or OPENAI_API_KEY
+                                                        + HOSAKA_ACCESS_TOKEN
+```
 
-- The hosted build is a **loving simulation** — same banner, same
-  commands, same plant, no real shell.
-- The appliance keeps the existing Python TUI from the original repo,
-  ready to be extended with a PTY bridge later (see
-  [`docs/architecture.md`](./docs/architecture.md)).
+| Layer    | Lives on  | Holds                                                        |
+| -------- | --------- | ------------------------------------------------------------ |
+| Source   | GitHub    | code, CI, docs                                               |
+| Frontend | Vercel    | static SPA + `/api/gemini` edge fn (proxies the `/ask` cmd)  |
+| Backend  | Fly.io    | FastAPI websocket → picoclaw subprocess + sandboxed workspace |
+
+The browser **never** holds an LLM API key. Every model call is brokered
+by Vercel (`/api/gemini`) or Fly (picoclaw) using server-side secrets.
+
+> The original Python TUI still ships in
+> [`Hosaka_Field-Terminal/`](./Hosaka_Field-Terminal/) for appliance
+> mode on a Raspberry Pi. See
+> [`docs/appliance-mode.md`](./docs/appliance-mode.md). It is **not**
+> part of the hosted stack above.
 
 ---
 
@@ -70,38 +98,70 @@ python -m hosaka       # runs the console TUI
 
 - **Terminal** — `xterm.js` + a scripted Hosaka shell. Try `/commands`,
   `/plant`, `/orb`, `/lore`, `/status`, `/signal`.
-- **Gemini LLM** — bring your own API key (stored in `localStorage`) or
-  use the optional Vercel Edge Function proxy. Try `/ask`, `/chat`,
-  `/model`. Gemini can also call a **watertight set of tools**
-  (time/math/lore/memory — see [`docs/tools-sandbox.md`](./docs/tools-sandbox.md)).
-- **Picoclaw agent (optional)** — a passphrase-gated websocket into a
-  Fly.io-hosted picoclaw binary with a real sandboxed filesystem and
-  shell. `/agent on` routes input there instead. See
-  [`docs/agent-backend.md`](./docs/agent-backend.md).
+- **Picoclaw agent — the heartbeat.** Free text in the terminal opens a
+  websocket to a Fly.io-hosted picoclaw process with a real sandboxed
+  filesystem and shell. The channel is gated by a magic word — say
+  **`neuro`** in the terminal to open it.
+- **`/ask` command** — a one-shot Gemini prompt routed through the
+  Vercel `/api/gemini` edge function. Useful for quick questions
+  without spinning up an agent session.
 - **Video** — pick a local file or paste a direct-URL video.
 - **Messages** — offline orb chat or a Discord/Slack/custom webhook.
 - **Lore** — breadcrumbs from before the cascade.
 
 Touch, mouse, and keyboard are all first-class. Tabs are 44px min. The
-terminal gets focus when you tap it.
+terminal gets focus when you tap it. On phones the banner switches to a
+compact layout.
+
+All errors are presented as branded in-character copy — the user never
+sees raw stack traces, HTTP codes, or API key names.
 
 ---
 
-## Deploy in ~5 minutes
+## Deploying
 
-Pick one (or all three — they don't mind each other):
+### 1. Frontend → Vercel
 
-| Target              | Instructions                                                       |
-| ------------------- | ------------------------------------------------------------------ |
-| GitHub Pages        | Push to `main`; the workflow in `.github/workflows/deploy.yml` builds and publishes. |
-| Vercel              | `vercel.json` is at the root. Point Vercel at this repo. Done.     |
-| Cloudflare Pages    | Build command `cd frontend && npm ci && npm run build`, output dir `frontend/dist`. |
-| Custom domain       | See [`docs/deployment.md`](./docs/deployment.md).                  |
+```bash
+# one-time
+npm i -g vercel
+vercel link    # point at this repo
 
-For a custom domain on GitHub Pages, copy
-[`frontend/public/CNAME.example`](./frontend/public/CNAME.example) to
-`frontend/public/CNAME` and set your hostname. The deploy workflow
-detects this and serves at `/` instead of `/<repo>/`.
+# secrets (Vercel dashboard → Project → Settings → Env Vars)
+GEMINI_API_KEY=…    # used by api/gemini.ts edge fn (for /ask only)
+```
+
+`vercel.json` is at the repo root. Pushing to `main` redeploys.
+
+### 2. Backend → Fly.io
+
+```bash
+fly launch    # uses ./fly.toml + ./Dockerfile (agent-server sources)
+fly secrets set \
+  HOSAKA_ACCESS_TOKEN=neuro          \
+  GEMINI_API_KEY=…                   \
+  PICOCLAW_MODEL=gemini/gemini-2.5-flash-lite
+fly deploy
+```
+
+The `HOSAKA_ACCESS_TOKEN` **must equal** the magic word the frontend
+ships with (`neuro` by default; override at build time with
+`VITE_HOSAKA_MAGIC_WORD`).
+
+### Swapping the agent's model / provider
+
+Picoclaw's provider is decided at container startup by
+[`agent-server/start.sh`](./agent-server/start.sh). It picks the first
+of `GEMINI_API_KEY` / `OPENAI_API_KEY` it finds in the env. To switch:
+
+```bash
+# from gemini → openai gpt-4o-mini (faster, paid)
+fly secrets unset GEMINI_API_KEY
+fly secrets set OPENAI_API_KEY=sk-… PICOCLAW_MODEL=openai/gpt-4o-mini
+fly deploy --no-cache
+```
+
+The model name is locked server-side; the browser cannot override it.
 
 ---
 
@@ -111,8 +171,7 @@ Human-readable:
 
 - [`docs/architecture.md`](./docs/architecture.md) — what lives where, and why.
 - [`docs/deployment.md`](./docs/deployment.md) — GH Pages, Vercel, Cloudflare, custom domain.
-- [`docs/llm.md`](./docs/llm.md) — Gemini (BYOK + proxy), env vars, free-tier notes.
-- [`docs/tools-sandbox.md`](./docs/tools-sandbox.md) — the watertight client-side tool set.
+- [`docs/llm.md`](./docs/llm.md) — Gemini proxy, env vars, free-tier notes.
 - [`docs/agent-backend.md`](./docs/agent-backend.md) — optional picoclaw on Fly.io, threat model, hardening checklist.
 - [`docs/appliance-mode.md`](./docs/appliance-mode.md) — running on a Pi with a touchscreen.
 - [`docs/local-development.md`](./docs/local-development.md) — dev loop, tooling, conventions.

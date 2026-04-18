@@ -1,5 +1,12 @@
 import type { Terminal } from "@xterm/xterm";
-import { BANNER, PLANT_STATES, LORE_FRAGMENTS, ORBS } from "./content";
+import {
+  BANNER,
+  BANNER_COMPACT,
+  PLANT_STATES,
+  LORE_FRAGMENTS,
+  ORBS,
+  THINKING_FRAMES,
+} from "./content";
 import { COMMANDS, type CommandEntry } from "./commands";
 import {
   askGemini,
@@ -57,6 +64,7 @@ export class HosakaShell {
   private plantTicks = 0;
   private llmHistory: LlmMessage[] = [];
   private busy = false;
+  private thinkingTimer: number | null = null;
 
   constructor(private readonly term: Terminal) {}
 
@@ -77,19 +85,32 @@ export class HosakaShell {
   }
 
   private writeBanner(): void {
-    for (const line of BANNER) this.writeln(`${CYAN}${line}${R}`);
+    // On narrow viewports the wide block banner wraps mid-glyph and looks
+    // broken. Pick the compact variant when xterm reports < 56 cols.
+    const cols = this.term.cols ?? 80;
+    const banner = cols < 56 ? BANNER_COMPACT : BANNER;
+    for (const line of banner) this.writeln(`${CYAN}${line}${R}`);
     this.writeln("");
     this.writeln(this.renderPlant());
     this.writeln("");
-    this.writeln(
-      `  ${CYAN}Field Terminal Online.${R}  ${GRAY}Signal steady.${R}  ${AMBER_DIM}hosted edition${R}`,
-    );
-    this.writeln(
-      `  ${DARK_GRAY}/commands to explore  ·  /help to start  ·  /ask the orb anything${R}`,
-    );
-    this.writeln(
-      `  ${DARK_GRAY}if someone shared a word with you, ${VIOLET}say it${R}${DARK_GRAY} and the channel opens.${R}`,
-    );
+    if (cols < 56) {
+      this.writeln(`  ${CYAN}Field Terminal Online.${R}`);
+      this.writeln(`  ${GRAY}Signal steady. ${AMBER_DIM}hosted edition${R}`);
+      this.writeln(`  ${DARK_GRAY}/help · /commands${R}`);
+      this.writeln(
+        `  ${DARK_GRAY}say a ${VIOLET}word${R}${DARK_GRAY}, open the channel.${R}`,
+      );
+    } else {
+      this.writeln(
+        `  ${CYAN}Field Terminal Online.${R}  ${GRAY}Signal steady.${R}  ${AMBER_DIM}hosted edition${R}`,
+      );
+      this.writeln(
+        `  ${DARK_GRAY}/commands to explore  ·  /help to start  ·  /ask the orb anything${R}`,
+      );
+      this.writeln(
+        `  ${DARK_GRAY}if someone shared a word with you, ${VIOLET}say it${R}${DARK_GRAY} and the channel opens.${R}`,
+      );
+    }
     this.writeln("");
   }
 
@@ -329,9 +350,10 @@ export class HosakaShell {
   private async askLlm(prompt: string): Promise<void> {
     const cfg = loadLlmConfig();
     this.busy = true;
-    this.writeln(`  ${DARK_GRAY}… listening${R}`);
+    this.startThinking();
     try {
       const res = await askGemini(prompt, this.llmHistory, cfg);
+      this.stopThinking();
       if (!res.ok) {
         this.writeGeminiFallback(res.code);
         return;
@@ -347,6 +369,7 @@ export class HosakaShell {
       }
       this.writeln("");
     } finally {
+      this.stopThinking();
       this.busy = false;
     }
   }
@@ -437,22 +460,25 @@ export class HosakaShell {
 
   private async askAgent(prompt: string, cfg: AgentConfig): Promise<void> {
     this.busy = true;
-    // Immediate feedback so the user sees that the channel is carrying
-    // their message. Without this, picoclaw's few-second latency feels
-    // like a dropped prompt and invites double-typing.
-    this.writeln(`  ${DARK_GRAY}… listening${R}`);
+    // Animated, in-character indicator so picoclaw's few-second latency
+    // doesn't feel like a dropped prompt. Updates the same line in place
+    // so we don't spam scrollback.
+    this.startThinking();
     try {
       const agent = getAgent(cfg);
       let res = await agent.send(prompt);
-      // Fly's websocket proxy idles out silent connections after ~60s,
-      // so the first send after a pause often lands on a half-dead socket
-      // and/or a cold machine. One quiet retry masks the cold start
-      // without spamming on a genuinely-down relay.
+      // Fly's ws proxy idles out silent connections after ~60s, so the
+      // first send after a pause often lands on a half-dead socket and/or
+      // a cold machine. One quiet retry masks the cold start without
+      // spamming on a genuinely-down relay.
       if (!res.ok && res.code === "unreachable") {
+        this.stopThinking();
         this.writeln(`  ${DARK_GRAY}… waking the relay${R}`);
+        this.startThinking();
         await new Promise((r) => setTimeout(r, 1500));
         res = await agent.send(prompt);
       }
+      this.stopThinking();
       if (!res.ok) {
         this.writeAgentFallback(res.code);
         return;
@@ -463,8 +489,35 @@ export class HosakaShell {
       }
       this.writeln("");
     } finally {
+      this.stopThinking();
       this.busy = false;
     }
+  }
+
+  // ── animated in-character thinking indicator ───────────────────────────
+  // Renders a single line that updates in place: a rotating message from
+  // THINKING_FRAMES with an animated "…" trailer. Always paired with
+  // stopThinking() in a finally block — never leave a dangling timer.
+  private startThinking(): void {
+    if (this.thinkingTimer !== null) return;
+    let tick = 0;
+    const trailers = [".", "..", "...", "…", "·…", "··…"];
+    const renderFrame = () => {
+      const msg = THINKING_FRAMES[Math.floor(tick / 4) % THINKING_FRAMES.length];
+      const tail = trailers[tick % trailers.length];
+      this.write(`\r\x1b[K  ${DARK_GRAY}${tail} ${msg}${R}`);
+      tick += 1;
+    };
+    renderFrame();
+    this.thinkingTimer = window.setInterval(renderFrame, 350);
+  }
+
+  private stopThinking(): void {
+    if (this.thinkingTimer === null) return;
+    window.clearInterval(this.thinkingTimer);
+    this.thinkingTimer = null;
+    // Wipe the indicator line so the next writeln starts on a clean row.
+    this.write("\r\x1b[K");
   }
 
   // Branded in-character copy for every picoclaw failure mode. The user

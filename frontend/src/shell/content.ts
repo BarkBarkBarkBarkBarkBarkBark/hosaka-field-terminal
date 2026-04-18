@@ -7,6 +7,24 @@ export const BANNER: readonly string[] = [
   "  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝",
 ];
 
+// Compact banner for narrow viewports (mobile portrait, ~30 cols max).
+// Used when term.cols can't fit BANNER without ugly mid-character wraps.
+export const BANNER_COMPACT: readonly string[] = [
+  "  ▓▓▒ HOSAKA ▒▓▓",
+  "  field terminal",
+];
+
+// Rotating in-character lines used by the animated "thinking" indicator
+// while picoclaw chews on a message. Kept terse, lowercase, on-vibe.
+export const THINKING_FRAMES: readonly string[] = [
+  "the orb listens",
+  "parsing the signal",
+  "picoclaw walks the directory",
+  "signal traveling",
+  "consulting the index",
+  "the orb is patient",
+];
+
 // Ordered from "dead" → "colony". Lifted from the original TUI plant set.
 export const PLANT_STATES: readonly (readonly string[])[] = [
   [

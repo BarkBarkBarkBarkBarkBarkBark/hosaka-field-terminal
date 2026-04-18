@@ -15,9 +15,14 @@ export function TerminalPanel({ active }: Props) {
   useEffect(() => {
     if (!hostRef.current) return;
 
+    // Smaller font on narrow screens so the banner + plant fit without
+    // wrapping mid-glyph on phones in portrait. ~12px gives us roughly
+    // 56 cols on a 360px viewport, which is the threshold the shell uses
+    // to switch to its compact banner.
+    const isNarrow = window.innerWidth < 500;
     const term = new Terminal({
       fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Consolas, monospace',
-      fontSize: 14,
+      fontSize: isNarrow ? 12 : 14,
       cursorBlink: true,
       cursorStyle: "bar",
       scrollback: 5000,

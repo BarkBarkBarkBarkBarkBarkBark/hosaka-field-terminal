@@ -329,6 +329,7 @@ export class HosakaShell {
   private async askLlm(prompt: string): Promise<void> {
     const cfg = loadLlmConfig();
     this.busy = true;
+    this.writeln(`  ${DARK_GRAY}… listening${R}`);
     try {
       const res = await askGemini(prompt, this.llmHistory, cfg);
       if (!res.ok) {
@@ -436,9 +437,22 @@ export class HosakaShell {
 
   private async askAgent(prompt: string, cfg: AgentConfig): Promise<void> {
     this.busy = true;
+    // Immediate feedback so the user sees that the channel is carrying
+    // their message. Without this, picoclaw's few-second latency feels
+    // like a dropped prompt and invites double-typing.
+    this.writeln(`  ${DARK_GRAY}… listening${R}`);
     try {
       const agent = getAgent(cfg);
-      const res = await agent.send(prompt);
+      let res = await agent.send(prompt);
+      // Fly's websocket proxy idles out silent connections after ~60s,
+      // so the first send after a pause often lands on a half-dead socket
+      // and/or a cold machine. One quiet retry masks the cold start
+      // without spamming on a genuinely-down relay.
+      if (!res.ok && res.code === "unreachable") {
+        this.writeln(`  ${DARK_GRAY}… waking the relay${R}`);
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await agent.send(prompt);
+      }
       if (!res.ok) {
         this.writeAgentFallback(res.code);
         return;

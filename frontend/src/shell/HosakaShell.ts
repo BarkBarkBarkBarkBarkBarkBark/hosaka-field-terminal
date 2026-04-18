@@ -66,6 +66,7 @@ export class HosakaShell {
   private busy = false;
   private thinkingTimer: number | null = null;
   private netscanTimer: number | null = null;
+  private suggestion: string | null = null;
 
   constructor(private readonly term: Terminal) {}
 
@@ -82,7 +83,28 @@ export class HosakaShell {
     this.term.write(s);
   }
   private writePrompt(): void {
+    // Push the cursor to the vertical mid-screen by writing enough blank
+    // lines to center it, then scrolling back. xterm doesn't expose a
+    // native "center viewport on cursor" API, so we pad after every
+    // prompt to keep the active line from being glued to the bottom.
+    const rows = this.term.rows ?? 24;
+    const pad = Math.floor(rows / 2);
+    for (let i = 0; i < pad; i++) this.writeln("");
+    this.term.scrollToBottom();
+    // Move the cursor back up to where those blanks start so the prompt
+    // sits at ~mid screen and new output grows downward from there.
+    this.write(`\x1b[${pad}A`);
     this.write(prompt());
+
+    // If there's a suggestion from the last picoclaw reply, show it as
+    // dim ghost text on the prompt line. Tab or Enter accepts, Esc or
+    // any other keypress dismisses.
+    if (this.suggestion) {
+      this.write(`${DARK_GRAY}${this.suggestion}${R}`);
+      // Move cursor back to the start of the suggestion text so the
+      // cursor sits at prompt position (user hasn't typed it yet).
+      this.write(`\x1b[${this.suggestion.length}D`);
+    }
   }
 
   private writeBanner(): void {
@@ -134,9 +156,20 @@ export class HosakaShell {
     if (data === "\x1b[H" || data === "\x01") return this.moveHome();
     if (data === "\x1b[F" || data === "\x05") return this.moveEnd();
 
+    // Tab accepts the ghost suggestion
+    if (data === "\t" && this.suggestion) {
+      this.acceptSuggestion();
+      return;
+    }
+
     for (const ch of data) {
       const code = ch.charCodeAt(0);
       if (ch === "\r") {
+        if (this.suggestion && this.buffer.length === 0) {
+          this.acceptSuggestion();
+          return;
+        }
+        this.clearSuggestion();
         this.submit();
       } else if (ch === "\x7f" || ch === "\b") {
         this.backspace();
@@ -156,7 +189,10 @@ export class HosakaShell {
         this.term.clear();
         this.writePrompt();
         this.write(this.buffer);
+      } else if (ch === "\x1b" && this.suggestion) {
+        this.clearSuggestion();
       } else if (code >= 32 && code !== 127) {
+        if (this.suggestion) this.clearSuggestion();
         this.insert(ch);
       }
     }
@@ -515,10 +551,64 @@ export class HosakaShell {
         this.writeln(`  ${line}`);
       }
       this.writeln("");
+
+      // If the reply contains a fenced code block or an inline `command`,
+      // extract the first one and offer it as a ghost suggestion on the
+      // next prompt line. The user can accept with Tab/Enter or dismiss
+      // with Esc or by typing anything else.
+      const cmd = this.extractSuggestion(res.text);
+      if (cmd) {
+        this.suggestion = cmd;
+      }
     } finally {
       this.stopThinking();
       this.busy = false;
     }
+  }
+
+  private acceptSuggestion(): void {
+    if (!this.suggestion) return;
+    const text = this.suggestion;
+    this.suggestion = null;
+    // Overwrite the ghost text with real (bright) text
+    this.write("\r" + prompt() + "\x1b[K");
+    this.buffer = text;
+    this.cursor = text.length;
+    this.write(text);
+    // Auto-submit the accepted suggestion
+    this.submit();
+  }
+
+  private clearSuggestion(): void {
+    if (!this.suggestion) return;
+    this.suggestion = null;
+    // Erase the ghost text
+    this.write("\r" + prompt() + "\x1b[K");
+  }
+
+  // ── inline code suggestion ──────────────────────────────────────────────
+  // Extracts the first code block or inline `command` from picoclaw's reply.
+  private extractSuggestion(text: string): string | null {
+    // Fenced code blocks: ```...\n<code>\n```
+    const fenced = /```[^\n]*\n([\s\S]*?)```/.exec(text);
+    if (fenced) {
+      const code = fenced[1].trim();
+      // Only suggest if it's 1-2 lines (likely a command, not a file)
+      const lines = code.split("\n");
+      if (lines.length <= 2 && code.length < 200) {
+        return lines[0].trim();
+      }
+    }
+    // Inline backtick: `some command here`
+    const inline = /`([^`]{3,120})`/.exec(text);
+    if (inline) {
+      const cmd = inline[1].trim();
+      // Skip if it looks like prose rather than a command
+      if (!cmd.includes(" ") || /^[!\/]|^[a-z]+\s/.test(cmd)) {
+        return cmd;
+      }
+    }
+    return null;
   }
 
   // ── animated in-character thinking indicator ───────────────────────────

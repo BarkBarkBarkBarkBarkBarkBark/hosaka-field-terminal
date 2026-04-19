@@ -5,102 +5,89 @@ Read this file first. It is short on purpose.
 
 ## Identity
 
-- Project: **hosaka-web-desktop** (fork/extension of
-  [Hosaka](https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka)).
-- Pitch: a touch-friendly web desktop that puts a simulated terminal
-  behind a glass screen, plays videos, and sends messages via webhooks.
+- Project: **hosaka-field-terminal** — the hosted deployment wrapper for
+  [Hosaka](https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka).
+- The **console repo** (Hosaka) is the single source of truth for the
+  React SPA. This repo does **not** maintain its own copy of the frontend
+  source. It pulls it at build time.
 - Tone: quirky, terse, lowercase, "signal steady", "no wrong way".
-  Keep humor dry and sparing. The orb never shouts.
 
-## Two runtime modes
+## Architecture
 
-1. **Hosted mode** — fully static SPA in [`frontend/`](./frontend),
-   deployed to GitHub Pages / Vercel / Cloudflare Pages.  No backend,
-   no secrets.  The terminal is simulated in TypeScript
-   ([`frontend/src/shell/HosakaShell.ts`](./frontend/src/shell/HosakaShell.ts)).
-2. **Appliance mode** — the original Python TUI in
-   [`Hosaka_Field-Terminal/`](./Hosaka_Field-Terminal). Runs on a
-   Raspberry Pi or laptop. Entry: `python -m hosaka`. Uses
-   `requirements-hosaka.txt`. Do **not** rewrite this unless asked.
+```
+hosaka_console (Hosaka repo)     ← canonical frontend source
+        │
+        │  git clone --depth 1 (build-time)
+        ▼
+hosaka_field-terminal            ← this repo: deployment wrapper
+  ├── scripts/sync-console.sh   ← pulls frontend/src, index.html, public/
+  ├── frontend/
+  │   ├── vite.config.ts        ← hosted build config (local to this repo)
+  │   ├── package.json          ← deps + scripts (local to this repo)
+  │   ├── .env.hosted           ← hosted-mode env vars
+  │   ├── src/ ← SYNCED         ← from console, not committed
+  │   ├── index.html ← SYNCED
+  │   └── public/ ← SYNCED (locales, library, splash)
+  ├── api/gemini.ts             ← Vercel Edge proxy (unique to this repo)
+  ├── agent-server/             ← Fly.io picoclaw bridge (unique to this repo)
+  └── vercel.json               ← runs sync-console.sh before npm ci
+```
 
-Hosted and appliance share **vibe** and **command taxonomy**, not
-code. The appliance is the source of truth for Hosaka's identity.
+## What's unique to this repo (do not delete)
 
-## Directory truth
+| Path                          | Purpose                                  |
+| ----------------------------- | ---------------------------------------- |
+| `api/gemini.ts`               | Vercel Edge Function; proxies chat to Gemini, hides API key |
+| `agent-server/`               | Fly.io FastAPI + picoclaw WebSocket bridge |
+| `frontend/vite.config.ts`     | Hosted build config (no outDir override, sourcemaps on) |
+| `frontend/package.json`       | Deps + scripts for the hosted build      |
+| `frontend/.env.hosted`        | Hosted-mode env vars (VITE_SHOW_SETTINGS=1, etc.) |
+| `scripts/sync-console.sh`    | Build-time clone of console frontend     |
+| `scripts/link-console.sh`    | Local dev symlink to sibling console checkout |
+| `vercel.json`                 | Vercel project config (runs sync before build) |
+| `.github/workflows/`          | GH Pages deploy + CI (both run sync first) |
+| `docs/`                       | Field-terminal-specific docs              |
 
-| Path                                  | Purpose                                  |
-| ------------------------------------- | ---------------------------------------- |
-| `frontend/`                           | Vite + React + TS web desktop            |
-| `frontend/src/panels/`                | One file per top-level panel             |
-| `frontend/src/shell/`                 | Simulated shell logic & content          |
-| `frontend/src/llm/gemini.ts`          | Gemini client (BYOK-first, proxy fallback) |
-| `frontend/src/components/`            | Small shared UI atoms + SettingsDrawer   |
-| `frontend/src/styles/app.css`         | Single stylesheet, CSS variables         |
-| `frontend/public/CNAME.example`       | Custom-domain stub (copy to CNAME)       |
-| `api/gemini.ts`                       | Vercel Edge Function; uses `GEMINI_API_KEY` env var |
-| `frontend/src/llm/tools.ts`           | Watertight client-side tools Gemini can call |
-| `frontend/src/llm/agentClient.ts`     | Websocket client for the picoclaw backend |
-| `agent-server/`                       | Optional Fly.io service: FastAPI + picoclaw |
-| `Hosaka_Field-Terminal/`              | Original Python TUI (preserved)          |
-| `docs/`                               | Human docs + machine-readable seeds      |
-| `.github/workflows/`                  | GH Pages deploy + typecheck CI           |
-| `vercel.json`                         | Vercel project config                    |
-| `instructions.md`                     | Historical mission brief (do not rely on for AWS) |
+## What's synced from console (do not edit here)
+
+Everything under `frontend/src/`, `frontend/index.html`, and
+`frontend/public/{locales,library,splash.png}` is pulled from the
+console repo. **Edit those files in the Hosaka repo, not here.**
 
 ## Conventions
 
-- **Language**: use `python`, not `python3` (see user rules).
+- **Do not edit frontend/src/ in this repo.** Changes go to the console repo.
 - **Package manager**: `npm` inside `frontend/`. Node 20+ required.
-- **TS**: strict mode on. No `any`. Keep components small.
-- **CSS**: one global stylesheet, CSS vars for theme. No CSS-in-JS.
-- **Commits / PRs**: don't invent GitHub identities. Ask before
-  committing if git state is unclear.
-- **Secrets**: never bake any in. Webhook URLs and user-supplied Gemini
-  keys live in `localStorage`. The shared Gemini key lives only in
-  Vercel's env vars and is read by `api/gemini.ts`. Never expose it
-  via `VITE_*` — Vite bakes those into the JS bundle.
+- **Secrets**: never bake any in. The shared Gemini key lives only in
+  Vercel's env vars and is read by `api/gemini.ts`.
+- Pin to a specific console commit: `HOSAKA_CONSOLE_REF=v1.2.3 bash scripts/sync-console.sh`
 
 ## Common commands
 
 ```bash
-# web desktop
-cd frontend
-npm install
-npm run dev          # local dev server on :5173
-npm run build        # typecheck + vite build to frontend/dist
-npm run typecheck    # tsc only
+# first time / after console updates
+bash scripts/sync-console.sh        # pull latest frontend from console
 
-# appliance TUI
-cd Hosaka_Field-Terminal
-source ../.venv/bin/activate
-pip install -r requirements-hosaka.txt
-python -m hosaka
+# local dev (if you have console checked out as a sibling)
+bash scripts/link-console.sh        # symlink instead of clone
+cd frontend && npm install && npm run dev
+
+# build
+cd frontend && npm run build         # vite build to frontend/dist
+npm run typecheck                    # tsc only
+
+# agent server (Fly.io)
+cd agent-server
+pip install -r requirements.txt
+python server.py
 ```
 
 ## Non-goals
 
-- Do not rewrite the Python TUI.
+- Do not maintain a copy of the frontend SPA source in this repo.
 - Do not add a Python backend to the hosted build — it must stay static.
-- Do not promise embedded third-party browser pages (Discord, YouTube,
-  Amazon, etc.). They all block iframing. Link out instead.
-- Do not adopt Electron unless explicitly asked.
-- Do not break the `/commands` taxonomy — mirror names from
-  [`Hosaka_Field-Terminal/hosaka/main_console.py`](./Hosaka_Field-Terminal/hosaka/main_console.py).
-
-## Extension points for agents
-
-- Add panels: drop a new file into `frontend/src/panels/`, register it
-  in [`frontend/src/App.tsx`](./frontend/src/App.tsx) (`PANELS` array +
-  render block).
-- Add shell commands: edit
-  [`frontend/src/shell/commands.ts`](./frontend/src/shell/commands.ts)
-  and add a case in `HosakaShell.dispatch`.
-- Extend the LLM: edit
-  [`frontend/src/llm/gemini.ts`](./frontend/src/llm/gemini.ts) (client)
-  and/or [`api/gemini.ts`](./api/gemini.ts) (proxy). Both reference
-  `GEMINI_MODELS` — keep the lists in sync.
-- Theme tweaks: edit `:root` variables in
-  [`frontend/src/styles/app.css`](./frontend/src/styles/app.css).
+- Do not break the console repo's code to accommodate hosted-only needs.
+  Use env vars and `.env.hosted` for hosted-mode behavior.
 
 ## Further seeds
 

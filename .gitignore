@@ -10,6 +10,17 @@ frontend/dist/
 frontend/.vite/
 *.log
 
+# ── synced from hosaka_console at build time (do not commit) ──
+# These are pulled by scripts/sync-console.sh or symlinked by scripts/link-console.sh
+frontend/src/
+frontend/index.html
+frontend/public/locales/
+frontend/public/library/
+frontend/public/splash.png
+
+# stale frozen copy — removed, do not recreate
+Hosaka_Field-Terminal/
+
 # env
 .env
 .env.local

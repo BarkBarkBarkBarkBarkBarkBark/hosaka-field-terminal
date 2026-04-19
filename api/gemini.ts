@@ -27,7 +27,7 @@ type InboundBody = {
   temperature?: number;
 };
 
-const DEFAULT_MODEL = "gemini-3.1-flash-lite-preview";
+const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 const ALLOWED_MODELS = new Set([
   "gemini-2.5-flash-lite",
   "gemini-2.5-flash",

@@ -2,3 +2,6 @@ node_modules/
 dist/
 .vite/
 *.log
+
+# Local dev env (use .env.hosted for Vercel, .env.appliance for Pi)
+.env.local

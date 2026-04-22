@@ -60,6 +60,12 @@ cp -r "$UPSTREAM/public/locales" "$FRONTEND/public/locales"
 rm -rf "$FRONTEND/public/library"
 cp -r "$UPSTREAM/public/library" "$FRONTEND/public/library"
 
+# Reading collections — full replacement (collections.json + any future siblings)
+rm -rf "$FRONTEND/public/reading"
+if [ -d "$UPSTREAM/public/reading" ]; then
+  cp -r "$UPSTREAM/public/reading" "$FRONTEND/public/reading"
+fi
+
 # Individual assets
 for f in splash.png; do
   if [ -f "$UPSTREAM/public/$f" ]; then

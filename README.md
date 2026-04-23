@@ -147,15 +147,18 @@ GEMINI_API_KEY=…    # used by api/gemini.ts edge fn (for /ask only)
 ```bash
 fly launch    # uses ./fly.toml + ./Dockerfile (agent-server sources)
 fly secrets set \
-  HOSAKA_ACCESS_TOKEN=neuro          \
+  HOSAKA_ACCESS_TOKEN='a long passphrase you will share by mouth' \
   GEMINI_API_KEY=…                   \
   PICOCLAW_MODEL=gemini/gemini-2.5-flash-lite
 fly deploy
 ```
 
-The `HOSAKA_ACCESS_TOKEN` **must equal** the magic word the frontend
-ships with (`neuro` by default; override at build time with
-`VITE_HOSAKA_MAGIC_WORD`).
+The **`HOSAKA_ACCESS_TOKEN` is the actual magic word**. It lives only on
+Fly — the frontend never sees it. Hosted builds set `VITE_HOSAKA_GATED=1`
+so the shell demands a word on first use; the shell ships whatever the
+user types as the WebSocket token and the server validates it with
+`hmac.compare_digest`. To rotate the word, `fly secrets set
+HOSAKA_ACCESS_TOKEN='new phrase'` — no rebuild required.
 
 ### Swapping the agent's model / provider
 

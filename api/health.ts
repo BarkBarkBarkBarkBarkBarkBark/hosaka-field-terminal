@@ -11,6 +11,7 @@ export default async function handler(): Promise<Response> {
       web: "ok",
       settings_enabled: false,
       web_panel_enabled: false,
+      nodes_enabled: false,
     }),
     { headers: { "content-type": "application/json" } },
   );

@@ -29,7 +29,6 @@ hosaka_field-terminal            ← this repo: deployment wrapper
   │   ├── index.html ← SYNCED
   │   └── public/ ← SYNCED (locales, library, splash)
   ├── api/gemini.ts             ← Vercel Edge proxy (unique to this repo)
-  ├── api/health.ts             ← Vercel Edge: /api/health feature flags for hosted SPA
   ├── agent-server/             ← Fly.io picoclaw bridge (unique to this repo)
   └── vercel.json               ← runs sync-console.sh before npm ci
 ```
@@ -39,11 +38,10 @@ hosaka_field-terminal            ← this repo: deployment wrapper
 | Path                          | Purpose                                  |
 | ----------------------------- | ---------------------------------------- |
 | `api/gemini.ts`               | Vercel Edge Function; proxies chat to Gemini, hides API key |
-| `api/health.ts`             | Vercel Edge Function; `settings_enabled` / `web_panel_enabled` for hosted SPA |
 | `agent-server/`               | Fly.io FastAPI + picoclaw WebSocket bridge |
 | `frontend/vite.config.ts`     | Hosted build config (no outDir override, sourcemaps on) |
 | `frontend/package.json`       | Deps + scripts for the hosted build      |
-| `frontend/.env.hosted`        | Hosted-mode env vars (agent URL, VITE_HOSAKA_GATED, etc.) |
+| `frontend/.env.hosted`        | Hosted-mode env vars (VITE_SHOW_SETTINGS=1, etc.) |
 | `scripts/sync-console.sh`    | Build-time clone of console frontend     |
 | `scripts/link-console.sh`    | Local dev symlink to sibling console checkout |
 | `vercel.json`                 | Vercel project config (runs sync before build) |

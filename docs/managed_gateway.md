@@ -123,6 +123,30 @@ fly secrets set \
 fly deploy
 ```
 
+Or use the helper in [scripts/launch-fly-machine.sh](../scripts/launch-fly-machine.sh):
+
+```bash
+export HOSAKA_ACCESS_TOKEN='long passphrase'
+export HOSAKA_ALLOWED_ORIGINS='https://terminal.hosaka.xyz'
+export GEMINI_API_KEY='AIza...'
+bash scripts/launch-fly-machine.sh
+```
+
+Optional broker-related secrets can be exported before launch as well:
+
+- `HOSAKA_BROKER_SIGNING_KEY`
+- `HOSAKA_NODE_ENROLL_SECRET`
+- `HOSAKA_PAIRING_HMAC_SECRET`
+- `AUTH_SECRET`
+
+If you want a Fly volume for workspace persistence, set:
+
+```bash
+export CREATE_FLY_VOLUME=1
+export FLY_VOLUME_NAME=hosaka_sessions
+export FLY_VOLUME_SIZE_GB=1
+```
+
 Then confirm:
 
 - websocket accepts requests only from allowed origins

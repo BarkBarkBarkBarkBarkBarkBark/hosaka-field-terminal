@@ -153,6 +153,15 @@ fly secrets set \
 fly deploy
 ```
 
+Or bootstrap it with the helper script:
+
+```bash
+export HOSAKA_ACCESS_TOKEN='a long passphrase you will share by mouth'
+export HOSAKA_ALLOWED_ORIGINS='https://terminal.hosaka.xyz'
+export GEMINI_API_KEY='AIza...'
+bash scripts/launch-fly-machine.sh
+```
+
 The **`HOSAKA_ACCESS_TOKEN` is the actual magic word**. It lives only on
 Fly — the frontend never sees it. Hosted builds set `VITE_HOSAKA_GATED=1`
 so the shell demands a word on first use; the shell ships whatever the

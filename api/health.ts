@@ -9,9 +9,14 @@ export default async function handler(): Promise<Response> {
   return new Response(
     JSON.stringify({
       web: "ok",
+      public_mode: true,
       settings_enabled: false,
       web_panel_enabled: false,
       nodes_enabled: false,
+      nodes_ui_enabled: false,
+      tailscale_api_enabled: false,
+      sync_enabled: false,
+      inbox_enabled: false,
     }),
     { headers: { "content-type": "application/json" } },
   );

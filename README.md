@@ -185,6 +185,8 @@ Human-readable:
 - [`docs/deployment.md`](./docs/deployment.md) — GH Pages, Vercel, Cloudflare, custom domain.
 - [`docs/llm.md`](./docs/llm.md) — Gemini proxy, env vars, free-tier notes.
 - [`docs/agent-backend.md`](./docs/agent-backend.md) — optional picoclaw on Fly.io, threat model, hardening checklist.
+- [`docs/managed_gateway.md`](./docs/managed_gateway.md) — hosted gateway/subscription rollout, required secrets, and public-web safety boundaries.
+- [`docs/login_gate.md`](./docs/login_gate.md) — OIDC login gate, owned-node discovery, local bridge handoff, and Fly broker requirements.
 - [`docs/appliance-mode.md`](./docs/appliance-mode.md) — running on a Pi with a touchscreen.
 - [`docs/local-development.md`](./docs/local-development.md) — dev loop, tooling, conventions.
 

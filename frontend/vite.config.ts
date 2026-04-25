@@ -1,5 +1,9 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // GitHub Pages serves from /<repo>/ by default; override via HOSAKA_BASE env var
 // (set by the GH Pages workflow) to support project pages + custom domains.
@@ -12,6 +16,21 @@ const wantSourcemaps = process.env.HOSAKA_SOURCEMAP !== "0";
 export default defineConfig({
   base,
   plugins: [react()],
+  resolve: {
+    preserveSymlinks: true,
+    alias: [
+      {
+        find: /^@automerge\/automerge$/,
+        replacement: path.resolve(
+          __dirname,
+          "node_modules/@automerge/automerge/dist/mjs/entrypoints/fullfat_base64.js",
+        ),
+      },
+    ],
+  },
+  optimizeDeps: {
+    exclude: ["@automerge/automerge"],
+  },
   server: {
     host: "0.0.0.0",
     port: 5173,

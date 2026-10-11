@@ -49,6 +49,11 @@ cp -r "$UPSTREAM/src" "$FRONTEND/src"
 echo "⟡ sync-console: copying index.html …"
 cp "$UPSTREAM/index.html" "$FRONTEND/index.html"
 
+# The shared API-help component imports this guide outside frontend/.
+mkdir -p "$FRONTEND/../docs"
+if [ -L "$FRONTEND/../docs/api.md" ]; then rm "$FRONTEND/../docs/api.md"; fi
+cp "$TMP_DIR/docs/api.md" "$FRONTEND/../docs/api.md"
+
 # ── sync public/ (merge — keep local CNAME, _headers, etc.) ────────────────
 echo "⟡ sync-console: syncing public/ …"
 

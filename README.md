@@ -1,4 +1,4 @@
-# HOSAKA — Web Desktop Edition
+# HOSAKA — Public Browser Demo
 
 ```
   ██╗  ██╗ ██████╗ ███████╗ █████╗ ██╗  ██╗ █████╗
@@ -17,19 +17,49 @@
       [_____]
 ```
 
-A **touch-friendly web desktop** that puts a terminal behind a glass
-screen and wires it to a real **picoclaw** agent on the backend. Type
-into the terminal and you're talking to an agentic framework that can
-walk a sandboxed filesystem, read files, and run a restricted shell.
+A deployment wrapper for the canonical frontend in
+[`BarkBarkBarkBarkBarkBarkBark/Hosaka`](https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka).
+It does not own a second frontend source tree. `scripts/sync-console.sh`
+copies upstream source and required bundled documentation at build time.
 
-> This repo is a fork of
-> [`BarkBarkBarkBarkBarkBarkBark/Hosaka`](https://github.com/BarkBarkBarkBarkBarkBarkBark/Hosaka),
-> extended with a web shell.  The original console lives untouched in
-> [`Hosaka_Field-Terminal/`](./Hosaka_Field-Terminal/).
+The active `terminal.hosaka.xyz` build is explicitly a **browser-only demo**:
+`/help`, `/commands`, `/lore`, `/orb`, `/signal`, `/about`, and `/clear`.
+There is no AI, native shell, PTY, or device access. Lore uses the bundled
+archive; `/signal` is decorative, not a network check.
+
+`frontend/vite.config.ts` selects `VITE_HOSAKA_DEMO=1` for this hosted build.
+The console repo leaves it unset for the real local GUI. The marketing site
+in `BarkBarkBarkBarkBarkBarkBark/cyber_deck` embeds this deployment.
+Do not point the public demo at `/ws/tui` or loosen its loopback-only policy.
+
+## Build the current demo
+
+```bash
+bash scripts/sync-console.sh
+cd frontend
+npm ci
+npm run build:check
+```
+
+For unpublished local console changes, run `bash scripts/link-console.sh`
+instead of syncing from GitHub. Do not edit the generated `frontend/src/`.
+The shared `docs/api.md` build input is synced too; other documentation here
+remains owned by this wrapper.
+
+Console changes must be pushed before a public wrapper rebuild can copy them.
+Then push/redeploy this wrapper to update the hosted demo.
 
 ---
 
-## Deployment stack
+## Legacy hosted-agent stack (not the active demo)
+
+The remaining notes describe the former web desktop and retained optional
+Vercel/Fly agent services. Their existence does not enable AI, shell commands,
+voice, or the old tabs in the current browser-only demo. The frozen
+`Hosaka_Field-Terminal/` copy mentioned below has been retired; use the
+canonical Hosaka repository for native appliance work.
+
+### Historical deployment stack
 
 ```
     your laptop

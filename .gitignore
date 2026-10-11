@@ -17,6 +17,7 @@ frontend/index.html
 frontend/public/locales/
 frontend/public/library/
 frontend/public/splash.png
+docs/api.md
 
 # stale frozen copy — removed, do not recreate
 Hosaka_Field-Terminal/

@@ -15,6 +15,9 @@ const wantSourcemaps = process.env.HOSAKA_SOURCEMAP !== "0";
 
 export default defineConfig({
   base,
+  define: {
+    "import.meta.env.VITE_HOSAKA_DEMO": JSON.stringify("1"),
+  },
   plugins: [react()],
   resolve: {
     preserveSymlinks: true,

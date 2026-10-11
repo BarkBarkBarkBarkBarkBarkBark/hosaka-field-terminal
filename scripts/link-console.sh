@@ -26,7 +26,7 @@ if [ "${1:-}" = "--unlink" ]; then
       echo "  removed symlink: $target"
     fi
   done
-  for target in public/locales public/library public/splash.png; do
+  for target in public/locales public/library public/splash.png ../docs/api.md; do
     p="$FRONTEND/$target"
     if [ -L "$p" ]; then
       rm "$p"
@@ -80,6 +80,7 @@ link "$CONSOLE/frontend/src"              "$FRONTEND/src"
 link "$CONSOLE/frontend/index.html"       "$FRONTEND/index.html"
 link "$CONSOLE/frontend/public/locales"   "$FRONTEND/public/locales"
 link "$CONSOLE/frontend/public/library"   "$FRONTEND/public/library"
+link "$CONSOLE/docs/api.md"               "$REPO_ROOT/docs/api.md"
 [ -f "$CONSOLE/frontend/public/splash.png" ] && \
   link "$CONSOLE/frontend/public/splash.png" "$FRONTEND/public/splash.png"
 

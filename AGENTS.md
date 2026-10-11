@@ -10,6 +10,10 @@ Read this file first. It is short on purpose.
 - The **console repo** (Hosaka) is the single source of truth for the
   React SPA. This repo does **not** maintain its own copy of the frontend
   source. It pulls it at build time.
+- The active public frontend is a labelled **browser-only demo**. Its
+  `VITE_HOSAKA_DEMO=1` build flag is selected in `frontend/vite.config.ts`.
+  It must not open `/ws/tui`, call device/configuration APIs, or advertise AI
+  access. The Vercel/Fly agent services below are retained legacy surfaces.
 - Tone: quirky, terse, lowercase, "signal steady", "no wrong way".
 
 ## Architecture
@@ -28,6 +32,7 @@ hosaka_field-terminal            ← this repo: deployment wrapper
   │   ├── src/ ← SYNCED         ← from console, not committed
   │   ├── index.html ← SYNCED
   │   └── public/ ← SYNCED (locales, library, splash)
+  ├── docs/api.md ← SYNCED shared frontend build input
   ├── api/gemini.ts             ← Vercel Edge proxy (unique to this repo)
   ├── agent-server/             ← Fly.io picoclaw bridge (unique to this repo)
   └── vercel.json               ← runs sync-console.sh before npm ci
@@ -41,7 +46,7 @@ hosaka_field-terminal            ← this repo: deployment wrapper
 | `agent-server/`               | Fly.io FastAPI + picoclaw WebSocket bridge |
 | `frontend/vite.config.ts`     | Hosted build config (no outDir override, sourcemaps on) |
 | `frontend/package.json`       | Deps + scripts for the hosted build      |
-| `frontend/.env.hosted`        | Hosted-mode env vars (VITE_SHOW_SETTINGS=1, etc.) |
+| `frontend/.env.hosted`        | Browser-demo flag and retained legacy agent env vars |
 | `scripts/sync-console.sh`    | Build-time clone of console frontend     |
 | `scripts/link-console.sh`    | Local dev symlink to sibling console checkout |
 | `vercel.json`                 | Vercel project config (runs sync before build) |
@@ -52,7 +57,8 @@ hosaka_field-terminal            ← this repo: deployment wrapper
 
 Everything under `frontend/src/`, `frontend/index.html`, and
 `frontend/public/{locales,library,splash.png}` is pulled from the
-console repo. **Edit those files in the Hosaka repo, not here.**
+console repo, along with `docs/api.md`. **Edit those files in the Hosaka repo,
+not here.**
 
 ## Conventions
 
@@ -88,6 +94,8 @@ python server.py
 - Do not add a Python backend to the hosted build — it must stay static.
 - Do not break the console repo's code to accommodate hosted-only needs.
   Use env vars and `.env.hosted` for hosted-mode behavior.
+- Keep the native console local-only. Public demo commands use bundled
+  content and browser state, not native shells or hosted-agent credentials.
 
 ## Further seeds
 

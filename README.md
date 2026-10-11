@@ -1,4 +1,4 @@
-# HOSAKA — Public Browser Demo
+# HOSAKA — Hosted Terminal
 
 ```
   ██╗  ██╗ ██████╗ ███████╗ █████╗ ██╗  ██╗ █████╗
@@ -22,17 +22,64 @@ A deployment wrapper for the canonical frontend in
 It does not own a second frontend source tree. `scripts/sync-console.sh`
 copies upstream source and required bundled documentation at build time.
 
-The active `terminal.hosaka.xyz` build is explicitly a **browser-only demo**:
-`/help`, `/commands`, `/lore`, `/orb`, `/signal`, `/about`, and `/clear`.
-There is no AI, native shell, PTY, or device access. Lore uses the bundled
-archive; `/signal` is decorative, not a network check.
+The hosted build uses the **real canonical Python TUI**, with xterm connected
+to a dedicated Fly gateway. An access code is required. Every connection gets
+a disposable Fly Machine, not a shell on the shared gateway.
 
-`frontend/vite.config.ts` selects `VITE_HOSAKA_DEMO=1` for this hosted build.
-The console repo leaves it unset for the real local GUI. The marketing site
+`frontend/vite.config.ts` selects `VITE_HOSAKA_TUI_URL` for this hosted build.
+The console repo leaves it unset for the local GUI. The marketing site
 in `BarkBarkBarkBarkBarkBarkBark/cyber_deck` embeds this deployment.
-Do not point the public demo at `/ws/tui` or loosen its loopback-only policy.
+Do not point the public terminal at `/ws/tui` or loosen its loopback-only policy.
 
-## Build the current demo
+## Hosted backend and limits
+
+- Gateway: `agent-server/hosted_terminal.py`, `/ws/hosted-tui`.
+- Worker: `agent-server/terminal_worker.py`; uses the canonical PTY bridge
+  and `python -m hosaka tui` from the tested, digest-pinned container runtime.
+- Access code is the first WebSocket message, not a URL/query parameter or
+  build-time secret. The gateway validates an exact Origin allowlist.
+- Three concurrent sessions, 600 seconds maximum, 30 model calls/session,
+  one in-flight model call, 2,048 output tokens/call and 128 KiB request limit.
+- Gemini runs through an OpenAI-compatible proxy. Its key never enters a
+  worker. The proxy fixes the model and rejects expired sessions.
+- Workers use a **separate app with no Fly secrets and no volumes**.
+  Fly injects app secrets automatically: never put secrets in the worker app.
+- Root startup installs outbound firewall rules, then drops to UID 10001
+  with no capabilities/no-new-privileges. Only public HTTPS and Fly DNS
+  egress are allowed; private/link-local networks are blocked. Replies to
+  gateway-initiated PTY connections are allowed.
+- Worker process has its own hard timeout and no restart policy. Disconnect
+  destroys the Machine; the gateway retries failed cleanup and reaps labeled
+  orphan workers on restart. Run exactly **one gateway Machine**.
+- This is disposable compute, not persistent storage. Public HTTPS research
+  is possible; arbitrary outbound network access and native deck hardware
+  are not. Each live worker uses one shared CPU and 512 MiB RAM and costs money.
+
+### Deploy
+
+```bash
+fly auth login
+fly apps create hosaka-terminal-workers --org personal
+# Confirm this is empty:
+fly secrets list --app hosaka-terminal-workers
+# Build and push once; use the resulting registry image for both roles.
+fly deploy --build-only --push --remote-only --image-label hosted-terminal-v1
+fly secrets set --app hosaka-field-terminal-alpha \
+  HOSAKA_WORKER_APP=hosaka-terminal-workers \
+  HOSAKA_WORKER_IMAGE=registry.fly.io/hosaka-field-terminal-alpha:hosted-terminal-v1
+# Securely import an app-scoped worker deploy token as HOSAKA_FLY_API_TOKEN:
+fly tokens create deploy --app hosaka-terminal-workers --expiry 720h
+# Also set HOSAKA_ACCESS_TOKEN and GEMINI_API_KEY on the gateway only.
+fly deploy --image registry.fly.io/hosaka-field-terminal-alpha:hosted-terminal-v1
+```
+
+Refresh the worker deploy token before it expires. `HOSAKA_HOSTED_MODEL`
+defaults to `gemini-2.5-flash-lite`. `HOSAKA_ALLOWED_ORIGINS` defaults to
+`https://terminal.hosaka.xyz,https://hosaka.xyz`; add development origins
+explicitly when testing. Never use `*`. `HOSAKA_GATEWAY_URL` is the public
+HTTPS gateway URL used by worker model requests.
+
+## Build the frontend
 
 ```bash
 bash scripts/sync-console.sh
@@ -47,15 +94,16 @@ The shared `docs/api.md` build input is synced too; other documentation here
 remains owned by this wrapper.
 
 Console changes must be pushed before a public wrapper rebuild can copy them.
-Then push/redeploy this wrapper to update the hosted demo.
+Then push/redeploy this wrapper to update the hosted terminal.
 
 ---
 
-## Legacy hosted-agent stack (not the active demo)
+## Legacy hosted-agent stack (not the active terminal)
 
 The remaining notes describe the former web desktop and retained optional
 Vercel/Fly agent services. Their existence does not enable AI, shell commands,
-voice, or the old tabs in the current browser-only demo. The frozen
+voice, or the old tabs in the current terminal. The root Dockerfile no longer
+starts the old `/ws/agent` direct-shell server. The frozen
 `Hosaka_Field-Terminal/` copy mentioned below has been retired; use the
 canonical Hosaka repository for native appliance work.
 

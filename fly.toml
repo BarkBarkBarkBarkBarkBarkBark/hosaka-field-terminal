@@ -11,9 +11,6 @@
 #   fly secrets set GEMINI_API_KEY='AIza...'
 #   fly secrets set HOSAKA_ALLOWED_ORIGINS='https://your-project.vercel.app'
 #
-# Optional persistent volume (for picoclaw session history across restarts):
-#   fly volumes create hosaka_sessions --size 1 --region ams
-#
 # Deploy:
 #   fly deploy
 
@@ -25,22 +22,11 @@ primary_region = "ams"
 
 [env]
   PORT = "8080"
-  HOSAKA_WORKSPACE_ROOT = "/workspaces"
-  HOSAKA_SESSION_TTL = "300"
-  HOSAKA_MSG_TIMEOUT = "45"
-  HOSAKA_MSG_MAX_CHARS = "4000"
-  HOSAKA_RATE_PER_MIN = "30"
-  PICOCLAW_MODEL = "gemini/gemini-2.5-flash-lite"
+  HOSAKA_HOSTED_MODEL = "gemini-2.5-flash-lite"
+  HOSAKA_WORKER_APP = "hosaka-terminal-workers"
 
-# Uncomment after running `fly volumes create hosaka_sessions --size 1 --region iad`.
-# Without it, sessions are fully ephemeral (wiped when the Machine restarts).
-# [mounts]
-#   source = "hosaka_sessions"
-#   destination = "/workspaces"
-#
-# If you add a mount, you must have EXACTLY ONE machine (volumes don't fan
-# out). Scale down first:
-#   fly scale count 1
+# Run exactly one gateway; workers are managed through the Machines API.
+# Never add secrets or persistent volumes to the worker app.
 
 [http_service]
   internal_port = 8080
@@ -58,4 +44,4 @@ primary_region = "ams"
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "256mb"
+  memory = "512mb"

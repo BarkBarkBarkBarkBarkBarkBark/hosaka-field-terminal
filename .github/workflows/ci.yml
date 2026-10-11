@@ -6,6 +6,17 @@ on:
     branches: [main]
 
 jobs:
+  hosted-terminal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build canonical-runtime gateway and worker
+        run: docker build -t hosaka-hosted:test .
+      - name: Test hosted auth, model quotas and cleanup
+        run: |
+          docker run --rm --entrypoint /opt/hosaka-field-terminal/.venv/bin/python \
+            -v "$PWD/agent-server/test_hosted_terminal.py:/app/test_hosted_terminal.py:ro" \
+            hosaka-hosted:test -m unittest -v test_hosted_terminal
   frontend:
     runs-on: ubuntu-latest
     steps:

@@ -10,10 +10,12 @@ Read this file first. It is short on purpose.
 - The **console repo** (Hosaka) is the single source of truth for the
   React SPA. This repo does **not** maintain its own copy of the frontend
   source. It pulls it at build time.
-- The active public frontend is a labelled **browser-only demo**. Its
-  `VITE_HOSAKA_DEMO=1` build flag is selected in `frontend/vite.config.ts`.
-  It must not open `/ws/tui`, call device/configuration APIs, or advertise AI
-  access. The Vercel/Fly agent services below are retained legacy surfaces.
+- The public frontend uses `VITE_HOSAKA_TUI_URL` for an access-code-gated
+  Fly gateway and the actual canonical TUI in one disposable Machine per
+  session. Never expose native `/ws/tui` or revive the old `/ws/agent`
+  direct-shell server. Workers must be in a separate app with NO secrets.
+  Gateway alone holds provider/deploy credentials; worker model tokens are
+  session-scoped. Keep the firewall, privilege drop, quotas and hard deadline.
 - Tone: quirky, terse, lowercase, "signal steady", "no wrong way".
 
 ## Architecture
@@ -43,10 +45,10 @@ hosaka_field-terminal            ← this repo: deployment wrapper
 | Path                          | Purpose                                  |
 | ----------------------------- | ---------------------------------------- |
 | `api/gemini.ts`               | Vercel Edge Function; proxies chat to Gemini, hides API key |
-| `agent-server/`               | Fly.io FastAPI + picoclaw WebSocket bridge |
+| `agent-server/`               | Fly gateway + disposable canonical PTY worker |
 | `frontend/vite.config.ts`     | Hosted build config (no outDir override, sourcemaps on) |
 | `frontend/package.json`       | Deps + scripts for the hosted build      |
-| `frontend/.env.hosted`        | Browser-demo flag and retained legacy agent env vars |
+| `frontend/.env.hosted`        | Dedicated hosted PTY URL, no embedded credentials |
 | `scripts/sync-console.sh`    | Build-time clone of console frontend     |
 | `scripts/link-console.sh`    | Local dev symlink to sibling console checkout |
 | `vercel.json`                 | Vercel project config (runs sync before build) |
@@ -64,8 +66,9 @@ not here.**
 
 - **Do not edit frontend/src/ in this repo.** Changes go to the console repo.
 - **Package manager**: `npm` inside `frontend/`. Node 20+ required.
-- **Secrets**: never bake any in. The shared Gemini key lives only in
-  Vercel's env vars and is read by `api/gemini.ts`.
+- **Secrets**: never bake any in. The active Gemini key and app-scoped
+  worker deploy token live only in the Fly gateway's secrets. The legacy
+  Vercel proxy is separate and is not the hosted terminal's transport.
 - Pin to a specific console commit: `HOSAKA_CONSOLE_REF=v1.2.3 bash scripts/sync-console.sh`
 
 ## Common commands
@@ -94,8 +97,9 @@ python server.py
 - Do not add a Python backend to the hosted build — it must stay static.
 - Do not break the console repo's code to accommodate hosted-only needs.
   Use env vars and `.env.hosted` for hosted-mode behavior.
-- Keep the native console local-only. Public demo commands use bundled
-  content and browser state, not native shells or hosted-agent credentials.
+- Keep the native console local-only. Hosted terminals use disposable
+  worker Machines, never the deployment host. Run one gateway Machine;
+  per-process session quotas and orphan recovery depend on this.
 
 ## Further seeds
 

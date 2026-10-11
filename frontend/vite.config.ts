@@ -16,7 +16,10 @@ const wantSourcemaps = process.env.HOSAKA_SOURCEMAP !== "0";
 export default defineConfig({
   base,
   define: {
-    "import.meta.env.VITE_HOSAKA_DEMO": JSON.stringify("1"),
+    "import.meta.env.VITE_HOSAKA_DEMO": JSON.stringify("0"),
+    "import.meta.env.VITE_HOSAKA_TUI_URL": JSON.stringify(
+      "wss://hosaka-field-terminal-alpha.fly.dev/ws/hosted-tui",
+    ),
   },
   plugins: [react()],
   resolve: {

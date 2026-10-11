@@ -11,6 +11,9 @@
 !agent-server/requirements.txt
 !agent-server/server.py
 !agent-server/start.sh
+!agent-server/hosted_terminal.py
+!agent-server/terminal_worker.py
+!agent-server/worker-start.sh
 !agent-server/seed/
 
 # Anti-patterns that might sneak through if someone edits this file later:

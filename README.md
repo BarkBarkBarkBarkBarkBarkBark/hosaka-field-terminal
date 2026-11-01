@@ -93,8 +93,9 @@ instead of syncing from GitHub. Do not edit the generated `frontend/src/`.
 The shared `docs/api.md` build input is synced too; other documentation here
 remains owned by this wrapper.
 
-Console changes must be pushed before a public wrapper rebuild can copy them.
-Then push/redeploy this wrapper to update the hosted terminal.
+The 1GB cyberdeck is updated by `hosaka update` in the canonical checkout.
+That copies the native tree over SSH and does not build or pull a Docker image.
+This wrapper remains the public hosted terminal.
 
 ---
 

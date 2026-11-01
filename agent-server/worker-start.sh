@@ -1,5 +1,7 @@
 #!/bin/sh
 set -eu
+# Public sessions never run operator extensions. Packages stay on the operator machine.
+export HOSAKA_PUBLIC_MODE=1
 # Rules are installed before dropping all capabilities and starting user code.
 for tool in iptables ip6tables; do
     "$tool" -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT

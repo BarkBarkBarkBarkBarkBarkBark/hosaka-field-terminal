@@ -223,6 +223,7 @@ async def terminal(ws: WebSocket):
                     "HOME": "/home/hosaka", "HOSAKA_SESSION_TOKEN": session.token,
                     "HOSAKA_MODEL_PROXY": f"{GATEWAY}/sessions/{sid}/v1",
                     "HOSAKA_STATE_PATH": "/home/hosaka/state.json",
+                    "HOSAKA_PUBLIC_MODE": "1",
                 },
                 "services": [],
             },

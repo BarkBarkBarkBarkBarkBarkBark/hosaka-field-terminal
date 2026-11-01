@@ -15,6 +15,8 @@
 !agent-server/terminal_worker.py
 !agent-server/worker-start.sh
 !agent-server/seed/
+!runtime-overlay/
+!runtime-overlay/**
 
 # Anti-patterns that might sneak through if someone edits this file later:
 __pycache__/
@@ -22,3 +24,10 @@ __pycache__/
 .venv/
 .env
 .env.*
+runtime-overlay/**/__pycache__/
+runtime-overlay/**/*.pyc
+runtime-overlay/**/.venv/
+runtime-overlay/**/.hosaka/
+runtime-overlay/**/extension-data/
+runtime-overlay/**/extensions.lock.json
+runtime-overlay/**/secrets.json

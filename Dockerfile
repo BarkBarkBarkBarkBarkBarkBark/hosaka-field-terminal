@@ -7,6 +7,17 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --create-home --uid 10001 --shell /bin/bash hosaka \
  && chmod 700 /root
+# `hosaka update` fills runtime-overlay/ from the canonical checkout.
+# A stock clone only has the README, so this image stays on the pinned runtime.
+COPY runtime-overlay/ /tmp/hosaka-overlay/
+RUN if [ -d /tmp/hosaka-overlay/hosaka ]; then \
+      rm -rf /opt/hosaka-field-terminal/hosaka /opt/hosaka-field-terminal/examples/extensions && \
+      mkdir -p /opt/hosaka-field-terminal/examples && \
+      cp -a /tmp/hosaka-overlay/hosaka /opt/hosaka-field-terminal/hosaka && \
+      cp -a /tmp/hosaka-overlay/examples/extensions /opt/hosaka-field-terminal/examples/extensions && \
+      /opt/hosaka-field-terminal/.venv/bin/pip install --no-cache-dir -r /tmp/hosaka-overlay/requirements-hosaka.txt ; \
+    fi \
+ && rm -rf /tmp/hosaka-overlay
 COPY agent-server/requirements.txt /app/requirements.txt
 RUN /opt/hosaka-field-terminal/.venv/bin/pip install -r /app/requirements.txt
 COPY agent-server/hosted_terminal.py agent-server/terminal_worker.py agent-server/worker-start.sh /app/

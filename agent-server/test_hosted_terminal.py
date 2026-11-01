@@ -127,6 +127,7 @@ class HostedTerminalTests(unittest.TestCase):
         self.assertEqual(config["init"]["exec"], ["/app/worker-start.sh"])
         self.assertFalse({"GEMINI_API_KEY", "HOSAKA_ACCESS_TOKEN",
                           "HOSAKA_FLY_API_TOKEN"} & config["env"].keys())
+        self.assertEqual(config["env"]["HOSAKA_PUBLIC_MODE"], "1")
         self.assertFalse(gateway.sessions)
         self.assertEqual(api.call_args_list[-1].args, ("DELETE", "/worker-id"))
 

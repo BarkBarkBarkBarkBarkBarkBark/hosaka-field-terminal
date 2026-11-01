@@ -12,6 +12,7 @@ app = FastAPI()
 
 
 def configure() -> None:
+    os.environ["HOSAKA_PUBLIC_MODE"] = "1"
     home = Path.home()
     workspace = home / "workspace"
     workspace.mkdir(mode=0o700, exist_ok=True)
